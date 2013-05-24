@@ -208,8 +208,9 @@ int main(void)
       }
       if (bit_is_clear(PIND,3))
       {
+
         int r = init_get_gcode_line
-          ("rowmans", "Hello world!", 0, 0, 1, -2, 0.23, 500, 3, 0, 'l');
+          ("rowmans", "He", 0, 0, 1, -2, 0.23, 500, 3, 1, 'l');
         char buf[200];
         char lcdbuf[20];
         while((g_line = get_gcode_line (buf, 200))!=-1)
@@ -225,6 +226,18 @@ int main(void)
           PORTA ^= (uint8_t)_BV(5);
         }
         PORTA &= (uint8_t)~_BV(4);
+
+
+        /*
+        const char *glyph=get_glyph_ptr("rowmans", 'H');
+        char* current_glyph=0;
+
+        current_glyph = malloc(strlen_PF(glyph)+1);
+        strcpy_PF (current_glyph, glyph);
+        uart_puts(current_glyph);
+        uart_putc('\n');
+        free(current_glyph);
+        */
       }
       else
        PORTA |= _BV(4);
