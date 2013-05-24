@@ -7,12 +7,12 @@
 MCU = atmega32
 FORMAT = ihex
 TARGET = main
-SRC =    $(TARGET).c lcd.c uart.c
+SRC =    $(TARGET).c lcd.c uart.c ../../hf2gcode/src/libhf2gcode.c
 ASRC =
 OPT = 2
 
 #hier an die verwendete Hardware anpassen
-HWREVISION=REV2
+HWREVISION=REV1
 
 # Name of this Makefile (used for "make depend").
 MAKEFILE = Makefile
@@ -30,7 +30,7 @@ DEBUG = stabs
 CSTANDARD = -std=gnu99
 
 # Place -D or -U options here
-CDEFS = -D$(HWREVISION) -DF_CPU=16000000UL
+CDEFS = -D$(HWREVISION) -DF_CPU=16000000UL -DAVR
 
 # Place -I options here
 CINCS =
@@ -129,7 +129,10 @@ ALL_ASFLAGS = -mmcu=$(MCU) -I. -x assembler-with-cpp $(ASFLAGS)
 
 
 # Default target.
-all: build
+all: build size
+
+size:
+	avr-size --mcu=$(MCU) -C $(TARGET).elf
 
 build: elf hex lss sym
 

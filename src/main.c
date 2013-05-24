@@ -19,7 +19,7 @@
 
   Needler AVR firmware
 
-  Autor: Andreas Weber 
+  Autor: Andreas Weber
   src: https://github.com/Andy1978/Needler
   changelog: 23.05.2013 created by Andy
 
@@ -34,11 +34,13 @@
 #include <util/delay.h>
 #include "lcd.h"
 #include "uart.h"
+#include "../../hf2gcode/src/libhf2gcode.h"
 
 #define UART_BAUD_RATE 38400
 
 volatile uint8_t do_update_lcd;
 volatile uint8_t uart_error;
+volatile uint16_t g_line;
 
 //  Integer (Basis 10) rechtsbündig auf LCD ausgeben.
 void lcd_put_int(int16_t val, uint8_t len)
@@ -61,15 +63,17 @@ void lcd_put_int32(int32_t val, uint8_t len)
   lcd_puts(buffer);
 }
 
-void update_lcd(void)
+/*void update_lcd(void)
 {
   char buf[20];
   lcd_gotoxy(0,0);
   _delay_ms(2);   //sonst zickt gotoxy rum, TODO: nachprüfen, ggf. Zeit verkleinern
-  lcd_puts_P("hello world!");
-  dtostrf(M_PI,5,2,buf);
+  //lcd_puts_P("hello world!");
+  //dtostrf(M_PI,5,2,buf);
+  itoa(g_line,buf,10);
   lcd_puts(buf);
 }
+*/
 
 //ISR(TIMER0_COMP_vect, ISR_NOBLOCK) //1kHz
 ISR(TIMER0_COMP_vect) //1kHz
@@ -106,20 +110,36 @@ void processUART(void)
       //~ {
         //~ status.uart_error_cnt++;
         //~ uart_error=((rx_tmp & 0xFF00) >> 8);
-      //~ }  
+      //~ }
     //~ }
     //~ //status.bits |= setvalues.bits;
     //~ //Senden
     //~ char* send=(char*)&status;
     //~ for(i=0;i<sizeof(struct s_status);i++)
     //~ {
-      //~ uart_putc(send[i]); 
+      //~ uart_putc(send[i]);
     //~ }
   //~ }
 }
 
+static int uart_putchar(char c, FILE *stream);
+static FILE mystdout = FDEV_SETUP_STREAM(uart_putchar, NULL,
+                                         _FDEV_SETUP_WRITE);
+
+static int uart_putchar(char c, FILE *stream)
+{
+
+  //if (c == '\n')
+  //  uart_putchar('\r', stream);
+  //loop_until_bit_is_set(UCSRA, UDRE);
+  //UDR = c;
+  uart_putc(c);
+  return 0;
+}
+
 int main(void)
 {
+  stdout = &mystdout;
   //uart_init(UART_BAUD_SELECT_DOUBLE_SPEED(UART_BAUD_RATE,F_CPU));
   uart_init(UART_BAUD_SELECT(UART_BAUD_RATE,F_CPU));
   lcd_init(LCD_DISP_ON);
@@ -134,17 +154,24 @@ int main(void)
   lcd_clrscr();
 
   //H-Brücke
-  DDRD |= _BV(PD2) | _BV(PD4) | _BV(PD5) | _BV(PD6) | _BV(PD7);
+  //DDRD |= _BV(PD2) | _BV(PD4) | _BV(PD5) | _BV(PD6) | _BV(PD7);
   //Relais für Heizung
-  DDRB |= _BV(PB3);
-  PORTD |= _BV(PD6) | _BV(PD7);
-    
+  //DDRB |= _BV(PB3);
+  //PORTD |= _BV(PD6) | _BV(PD7);
+
+  //PullUp für den linken Taster
+  //(der rechte Taster kann nicht verwendet werden da auch TxD)
+  PORTD |= _BV(PD3);
+
+  //2 LEDs als Ausgang
+  DDRA |= _BV(PA4) | _BV(PA5);
+
   /*** TIMER0 ***/
   OCR0=250;
   //CTC = Clear Timer on Compare match S.80
   //Normal port operation, OC0 disconnected
   //Prescaler=64 -> clk=250kHz
-  TCCR0 = _BV(WGM01) | _BV(CS01) | _BV(CS00); 
+  TCCR0 = _BV(WGM01) | _BV(CS01) | _BV(CS00);
   //On Compare match Interrupt Enable for timer 0
   TIMSK |= _BV(OCIE0);
 
@@ -158,27 +185,49 @@ int main(void)
 
   /*** ADC ***/
   //Prescaler 128 = 125kHz ADC Clock, AutoTrigger, Interrupts enable
-  ADCSRA = _BV(ADEN) | _BV(ADPS0) | _BV(ADPS1) | _BV(ADPS2) | _BV(ADATE) | _BV(ADSC) | _BV(ADIE); 
+  ADCSRA = _BV(ADEN) | _BV(ADPS0) | _BV(ADPS1) | _BV(ADPS2) | _BV(ADATE) | _BV(ADSC) | _BV(ADIE);
 
   //AVCC with external capacitor at AREF, internal 2.56V bandgap
   //siehe S. 215
   //8=Multiplexer ADC0 positive Input, ADC0 negative, 10x gain
   //9=Multiplexer ADC1 positive Input, ADC0 negative, 10x gain
-  ADMUX = _BV(REFS1) | _BV(REFS0) | 11;   
+  ADMUX = _BV(REFS1) | _BV(REFS0) | 11;
   //ADC in Free Running mode
-  SFIOR &= ~(_BV(ADTS2) | _BV(ADTS1) | _BV(ADTS0)); 
+  SFIOR &= ~(_BV(ADTS2) | _BV(ADTS1) | _BV(ADTS0));
 
   //enable global interrupts
-  sei();      
-
+  sei();
   for (;;)    /* main event loop */
     {
+      //printf("abcdef\n");
       processUART();
       if(do_update_lcd)
       {
-        update_lcd();
+        //update_lcd();
         do_update_lcd=0;
       }
+      if (bit_is_clear(PIND,3))
+      {
+        int r = init_get_gcode_line
+          ("rowmans", "Hello world!", 0, 0, 1, -2, 0.23, 500, 3, 0, 'l');
+        char buf[200];
+        char lcdbuf[20];
+        while((g_line = get_gcode_line (buf, 200))!=-1)
+        {
+          uart_puts(buf);
+          uart_putc('\n');
+          itoa(g_line,lcdbuf,10);
+          lcd_gotoxy(0,0);
+          for(uint8_t j=0;j<10;j++)
+            _delay_ms(10);
+
+          lcd_puts(lcdbuf);
+          PORTA ^= (uint8_t)_BV(5);
+        }
+        PORTA &= (uint8_t)~_BV(4);
+      }
+      else
+       PORTA |= _BV(4);
     }
     return 0;
 }
