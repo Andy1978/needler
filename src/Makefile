@@ -30,7 +30,7 @@ DEBUG = stabs
 CSTANDARD = -std=gnu99
 
 # Place -D or -U options here
-CDEFS = -D$(HWREVISION) -DF_CPU=16000000UL -DAVR
+CDEFS = -D$(HWREVISION) -DF_CPU=16000000UL -DAVR -DFIXED_PRECISION
 
 # Place -I options here
 CINCS =

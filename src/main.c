@@ -63,7 +63,7 @@ void lcd_put_int32(int32_t val, uint8_t len)
   lcd_puts(buffer);
 }
 
-/*void update_lcd(void)
+void update_lcd(void)
 {
   char buf[20];
   lcd_gotoxy(0,0);
@@ -72,8 +72,17 @@ void lcd_put_int32(int32_t val, uint8_t len)
   //dtostrf(M_PI,5,2,buf);
   itoa(g_line,buf,10);
   lcd_puts(buf);
+  //snprintf(buf, 20, "F%.*f", _precision, _feed);
+  int cnt;
+  snprintf(buf, 20, "F%.2f%n", 123.45, &cnt);
+  lcd_puts(buf);
+
+  lcd_gotoxy(0,1);
+  _delay_ms(2);   //sonst zickt gotoxy rum, TODO: nachprüfen, ggf. Zeit verkleinern
+  itoa(cnt, buf, 10);
+  lcd_puts(buf);
 }
-*/
+
 
 //ISR(TIMER0_COMP_vect, ISR_NOBLOCK) //1kHz
 ISR(TIMER0_COMP_vect) //1kHz
@@ -203,25 +212,25 @@ int main(void)
       processUART();
       if(do_update_lcd)
       {
-        //update_lcd();
+        update_lcd();
         do_update_lcd=0;
       }
       if (bit_is_clear(PIND,3))
       {
 
-        int r = init_get_gcode_line("rowmans", "He", 0, 0, 1, -1, 15, 0.23, 500, 3, 1, 'l');
+        int r = init_get_gcode_line("rowmans", "Hello world!", 0, 0, 1, -1, 15, 0.23, 500, 3, 1, 'l');
         char buf[200];
         char lcdbuf[20];
         while((g_line = get_gcode_line (buf, 200))!=-1)
         {
           uart_puts(buf);
           uart_putc('\n');
-          itoa(g_line,lcdbuf,10);
-          lcd_gotoxy(0,0);
+          //itoa(g_line,lcdbuf,10);
+          //lcd_gotoxy(0,0);
           for(uint8_t j=0;j<10;j++)
             _delay_ms(10);
 
-          lcd_puts(lcdbuf);
+          //lcd_puts(lcdbuf);
           PORTA ^= (uint8_t)_BV(5);
         }
         PORTA &= (uint8_t)~_BV(4);
