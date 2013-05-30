@@ -1,0 +1,37 @@
+
+- Nadler über MKBoard ein und ausschalten.
+Dazu wird Direction und Count der Z-Achse vom Atmega328 mit grbl auf das MKBoard
+gegeben, dieses zählt und schaltet den Nadler ein und aus.
+Ich hbae Adrian gesagt er soll die 230V Variante bestellen weil die
+Leistungsaufnahme bei 24V zu groß für das AMW102 ist.
+Notfalls über Kühlmittel- oder Spindelpin.
+
+Mögliches Relais für den Nadler HF118F-005-2ZS Leistungsrelais, 5V, 2 Wechsler, 5A, RT III
+
+- Da das MKBoard ca. 250mA braucht und der Atmega328 mit Relais usw. auch nochmal etwas,
+würde ich getrenntes 5V Netzteil vorschlagen
+
+- Not-Aus? Freigabe in einem oder beide Griffe?
+Dazu könnte man vor dem Ringkerntrafo trennen.
+Der Enable Eingang der Treiber liegt auf SV2:10 und wird in Manual als "Not-Aus" geführt
+
+Reichelt Bestellung:
+2x HF118F-005-2ZS
+1x SNT MW25-05
+1x KM 01.1105 Kombi,Stecker,Sicherung,Netzschalter 2-polig
+1x KM 01SH-1 Sicherungshalter
+3x CNY 74-4H
+2x GS 16 IC-Sockel, 16-polig, doppelter Federkontakt
+2x GS 28-S
+2x ATMEGA 328P-PU
+2x 16,0000-HC49U-S
+6x AKL 094-02
+10x PFL 10
+10x WSL 10G
+5x PFL 16
+5x WSL 16G
+1x LEITPASTE 10GR
+
+Alternative Schrittmotortreiber:
+http://www.leadshine.com/Product_Show.aspx?ID=118
+http://www.cnc-spezialist.de/leadshine-schrittmotortreiber-m542-p-294-1.html
