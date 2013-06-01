@@ -218,7 +218,7 @@ int main(void)
       if (bit_is_clear(PIND,3))
       {
 
-        int r = init_get_gcode_line("rowmans", "Hello world!", 0, 0, 1, -1, 15, 0.23, 500, 3, 1, 'l');
+        int r = init_get_gcode_line("rowmans", "Hello world!", 0, 0, 1, -1, 15, 0.23, 500, 3, 1, 'l', 0);
         char buf[200];
         char lcdbuf[20];
         while((g_line = get_gcode_line (buf, 200))!=-1)
