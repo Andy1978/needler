@@ -1,0 +1,4 @@
+#auf 16MHz externer Quarz
+
+avrdude -P usb -c usbasp -p atmega32 -U lfuse:w:0x3F:m
+avrdude -P usb -c usbasp -p atmega32 -U hfuse:w:0xD9:m

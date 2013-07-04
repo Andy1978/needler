@@ -7,7 +7,8 @@
 MCU = atmega32
 FORMAT = ihex
 TARGET = main
-SRC =    $(TARGET).c lcd.c uart.c ../../hf2gcode/src/libhf2gcode.c
+#SRC =    $(TARGET).c lcd.c uart.c ../../hf2gcode/src/libhf2gcode.c
+SRC =    $(TARGET).c lcd.c uart.c
 ASRC =
 OPT = 2
 

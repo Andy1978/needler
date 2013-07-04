@@ -25,6 +25,27 @@
 
 **************************************************/
 
+/*************************************************
+ * Hardware:
+ * PD0: IN : RxD
+ * PD1: OUT: TxD
+ * PD2: IN : Z_DIR
+ * PD3: IN : Enable/FEED HOLD. 0=betätigt
+ * PD4,5: not used
+ * PD6: Relais Pneumatikventil. 1=EIN
+ * PD7: not used
+ *
+ * PORTA+PORTC : Matrix Tastatur
+ * PB0: LCD RS
+ * PB1: IN: Z_STEP
+ * PB2: LCD R/W
+ * PB3: LCD E
+ * PB4-7: LCD D04-D07
+ *
+ * ***********************************************/
+
+
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -34,7 +55,7 @@
 #include <util/delay.h>
 #include "lcd.h"
 #include "uart.h"
-#include "../../hf2gcode/src/libhf2gcode.h"
+//#include "../../hf2gcode/src/libhf2gcode.h"
 
 #define UART_BAUD_RATE 38400
 
@@ -153,27 +174,26 @@ int main(void)
   uart_init(UART_BAUD_SELECT(UART_BAUD_RATE,F_CPU));
   lcd_init(LCD_DISP_ON);
   lcd_clrscr();
-  lcd_puts_P("Needler v0.1\n");
+  lcd_gotoxy(0,0);
+  lcd_puts_P("Needler v0.2\n");
   lcd_gotoxy(0,1);
   lcd_puts_P(__DATE__" aw");
 
-  //3s Delay for Splash
-  for(uint8_t i=0;i<60;++i)
+  //Delay for Splash
+  for(uint8_t i=0;i<160;++i)
     _delay_ms(15);
+
+  //PD2: IN : Z_DIR
+  //PD3: IN : Enable/FEED HOLD. 0=betätigt
+  //PD6: OUT: Relais Pneumatikventil. 1=EIN
+  DDRD  |= _BV(PD6);
+  PORTD |= _BV(PD2) | _BV(PD3) | _BV(PD4) | _BV(PD5) | _BV(PD7);
+
+  //PB1: IN: Z_STEP
+  PORTB |= _BV(PB1);
+
+
   lcd_clrscr();
-
-  //H-Brücke
-  //DDRD |= _BV(PD2) | _BV(PD4) | _BV(PD5) | _BV(PD6) | _BV(PD7);
-  //Relais für Heizung
-  //DDRB |= _BV(PB3);
-  //PORTD |= _BV(PD6) | _BV(PD7);
-
-  //PullUp für den linken Taster
-  //(der rechte Taster kann nicht verwendet werden da auch TxD)
-  PORTD |= _BV(PD3);
-
-  //2 LEDs als Ausgang
-  DDRA |= _BV(PA4) | _BV(PA5);
 
   /*** TIMER0 ***/
   OCR0=250;
@@ -187,22 +207,22 @@ int main(void)
   /** TIMER1 **/
   //PWM Phase correct 10bit
   //Set OC1A+OC1B on match when upcounting (page 108)
-  TCCR1A = _BV(COM1A1) | _BV(COM1B1) | _BV(COM1A0) | _BV(COM1B0) | _BV(WGM11) | _BV(WGM10);
+  //TCCR1A = _BV(COM1A1) | _BV(COM1B1) | _BV(COM1A0) | _BV(COM1B0) | _BV(WGM11) | _BV(WGM10);
   //Prescaler = 1 (page 110)
-  TCCR1B = _BV(CS10);
+  //TCCR1B = _BV(CS10);
 
 
   /*** ADC ***/
   //Prescaler 128 = 125kHz ADC Clock, AutoTrigger, Interrupts enable
-  ADCSRA = _BV(ADEN) | _BV(ADPS0) | _BV(ADPS1) | _BV(ADPS2) | _BV(ADATE) | _BV(ADSC) | _BV(ADIE);
+  //ADCSRA = _BV(ADEN) | _BV(ADPS0) | _BV(ADPS1) | _BV(ADPS2) | _BV(ADATE) | _BV(ADSC) | _BV(ADIE);
 
   //AVCC with external capacitor at AREF, internal 2.56V bandgap
   //siehe S. 215
   //8=Multiplexer ADC0 positive Input, ADC0 negative, 10x gain
   //9=Multiplexer ADC1 positive Input, ADC0 negative, 10x gain
-  ADMUX = _BV(REFS1) | _BV(REFS0) | 11;
+  //ADMUX = _BV(REFS1) | _BV(REFS0) | 11;
   //ADC in Free Running mode
-  SFIOR &= ~(_BV(ADTS2) | _BV(ADTS1) | _BV(ADTS0));
+  //SFIOR &= ~(_BV(ADTS2) | _BV(ADTS1) | _BV(ADTS0));
 
   //enable global interrupts
   sei();
@@ -215,6 +235,7 @@ int main(void)
         update_lcd();
         do_update_lcd=0;
       }
+/*
       if (bit_is_clear(PIND,3))
       {
 
@@ -234,7 +255,7 @@ int main(void)
           PORTA ^= (uint8_t)_BV(5);
         }
         PORTA &= (uint8_t)~_BV(4);
-
+*/
 
         /*
         const char *glyph=get_glyph_ptr("rowmans", 'H');
@@ -246,9 +267,10 @@ int main(void)
         uart_putc('\n');
         free(current_glyph);
         */
-      }
+/*      }
       else
        PORTA |= _BV(4);
+*/
     }
     return 0;
 }
