@@ -9,12 +9,6 @@
 #ifndef KEYMATRIX_H
 #define KEYMATRIX_H
 
-
-#ifdef ALTKEYS
-#include "keyaltdefs.h"     // Include alternation key definitions
-#endif                      // if feature is implemented
-
-
 union _key_code
 {
   //*
@@ -29,7 +23,6 @@ union _key_code
   //* key_code.row    - Get row part of scancode
   //* key_code.col    - Get column part of scancode
   //*
-
 
   unsigned int complete;            // Access all 16 bits
 

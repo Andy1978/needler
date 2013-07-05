@@ -9,65 +9,34 @@
 #include "lcd.h"
 #include "keymatrix.h"
 
-//*** Character conversion table ***
+/* Scancode 23 und 30 ist nicht belegt (nur 62 Tasten) */
+// TODO: in flash schieben
+const char characters[64] = {  0,   0,   0,    0,   0, ' ',   0,    0,
+                             'm', 'b', 'c',  'y', '.',   0,   0,    0,
+                             'n', 'v', 'x',    0, ',', '@',   0,    0,
+                             'j', 'g', 'd',  'a', 'l', '#',   0,  '0',
+                             'h', 'f', 's',    0, 'k', '<',   0, '\b',
+                             'u', 't', 'e',  'q', 'o', '+',   0,  '?',
+                             'z', 'r', 'w', '\t', 'i', 'p', '8',  '9',
+                             '3', '2', '1',    0, '4', '5', '6',  '7'};
 
-/*
-const char __flash characters[4][32] = {
-                       { '1', '2', '3', 0, 0, 0, 0, 0,  // No alternation
-                             '4', '5', '6', 0, 0, 0, 0, 0,
-                             '7', '8', '9', 0, 0, 0, 0, 0,
-                             '*', '0', '#', 0, 0, 0, 0, 0 },
-
-                           { 'a', 'd', 'g', 0, 0, 0, 0, 0,  // First character
-                             'j', 'm', 'p', 0, 0, 0, 0, 0,
-                             's', 'v', 'y', 0, 0, 0, 0, 0,
-                             '*', '.', '#', 0, 0, 0, 0, 0 },
-
-                           { 'b', 'e', 'h', 0, 0, 0, 0, 0,  // Second character
-                             'k', 'n', 'q', 0, 0, 0, 0, 0,
-                             't', 'w', 'z', 0, 0, 0, 0, 0,
-                             '*', '?', '#', 0, 0, 0, 0, 0 },
-
-                           { 'c', 'f', 'i', 0, 0, 0, 0, 0,  // Third character
-                             'l', 'o', 'r', 0, 0, 0, 0, 0,
-                             'u', 'x', '-', 0, 0, 0, 0, 0,
-                             '*', '!', '#', 0, 0, 0, 0, 0 }
-                         };
-
-*/
-
-/*
-char convertKey(void)
-{
-  char tempChar;
-
-  if( key_code.altKey0 )          // First char ?
-  {
-    tempChar = characters[1][key_code.scan];
-
-  } else if( key_code.altKey1 )     // Second char ?
-  {
-    tempChar = characters[2][key_code.scan];
-
-  } else if( key_code.altKey2 )     // Third char ?
-  {
-    tempChar = characters[3][key_code.scan];
-
-  } else                  // No alternation ?
-  {
-    tempChar = characters[0][key_code.scan];
-  }
-
-
-  if( key_code.lckKey0 )          // Uppercase if caps lock
-  {
-    tempChar = toupper( tempChar );
-  }
-
-
-  return tempChar;
-}
-*/
+/* Nicht-ASCII darstellbare Tastencodes */
+#define _F3    0
+#define _F2    1
+#define _F1    2
+#define _STRG  3
+#define _F4    4 
+#define _DOWN  6
+#define _LEFT  7
+#define _UP    14
+#define _RIGHT 15
+#define _SHIFT 19
+#define _ALT   22
+#define _CAPS  35
+#define _ENTF  38
+#define _ENDE  46
+#define _TAB   51
+#define _ESC   59
 
 ISR(TIMER0_COMP_vect)
 {
@@ -76,10 +45,16 @@ ISR(TIMER0_COMP_vect)
   char buf[3];
   itoa(temp,buf,16);
   lcd_puts(buf);
+  lcd_putc(' ');
+  if(temp!=0xff)
+  {
+    uint8_t c=characters[temp];
+    if(c) lcd_putc(c);
+  }
+  lcd_puts("__");
 
 }
 
-/*** Main test application loop ***/
 int main(void)
 {
   lcd_init(LCD_DISP_ON);
@@ -110,19 +85,7 @@ int main(void)
   /* Get keys and transmit forever */
   do
   {
-/*
-    char tempChar;
 
-    key_get();                // Wait for keypress
-    //PORTA = ~key_altState;          // Show flags on STK500 LEDs
-
-    tempChar = convertKey();        // Convert to character
-
-//    while( key_code.scan != 0xFF )      // Uncomment to implement simple key repetition
-    {
-      sendChar( tempChar );       // Transmit character until key released
-    }
- */
   } while(1);
   return 0;
 }
