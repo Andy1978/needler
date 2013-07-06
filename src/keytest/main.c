@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include <caca.h>
 
 #include "../keymapping.h"
@@ -69,6 +70,10 @@ uint8_t ascii_to_key(int c)
   return i;
 }
 
+// Scancode ist der Code, wie er von der 8x8 Folientastatur kommt
+// 255 = keine Taste gedrückt
+// 0..63 die jeweilige Taste (Siehe CSV Tabelle)
+
 int process_menu(uint8_t scancode)
 {
   //Cursor für Texteingabe
@@ -77,29 +82,56 @@ int process_menu(uint8_t scancode)
   
   static uint8_t cursor_x=0;  //0..15
   static uint8_t cursor_y=0;  //0..1
+  static union _modifier_state modifier_state; 
+  static uint8_t last_scancode;
   
-  //Taste gedrückt?
-  if(scancode!=0xff)
+  //Nur Flanke auswerten
+  if(last_scancode==0xff && scancode!=0xff)
   {
-    caca_printf(cv,0,12,"8x8 last scancode = %i  ",scancode);
-    //Wandlung von 8x8 Keycode auf ASCII oder Modifier
-    if(scancode>63)
+    //Taste gedrückt?
+    if(scancode!=0xff)
     {
-      fprintf(stderr, "panic, keycode>63\n");
-      exit(-1);
+      caca_printf(cv,0,12,"8x8 last scancode = %i  ",scancode);
+      //Wandlung von 8x8 Keycode auf ASCII oder Modifier
+      if(scancode>63)
+      {
+        fprintf(stderr, "panic, keycode>63\n");
+        exit(-1);
+      }
+      uint8_t c=characters[scancode];
+      //Prüfen ob ASCII Zeichen
+      if(c)
+      {
+        if(modifier_state.SHIFT || modifier_state.CAPS)
+         c = toupper(c); 
+       
+        //Ist es auf dem LCD anzeigbar?
+        if(isprint(c))
+        {
+          lcd_lines[cursor_y][cursor_x]=c;
+          //Shift zurücksetzen
+          modifier_state.SHIFT=0;
+          if (cursor_x<CURSOR_MAX_X) cursor_x++;
+        }
+      }
+      else /*muss ein Modifier sein*/
+      {
+        printf("must be a modifier. scancode=%i\n",scancode);
+        switch(scancode)
+        {
+          case _SHIFT: modifier_state.SHIFT=1; break;
+          case _CAPS : modifier_state.CAPS=!modifier_state.CAPS; break;
+          case _ALT  : /* TODO */ break;
+          case _STRG : /* TODO */ break;
+          default:
+            break;
+        }
+        
+      }
+      
     }
-    uint8_t c=characters[scancode];
-    //Prüfen ob ASCII Zeichen
-    if(c)
-    {
-      lcd_lines[cursor_y][cursor_x]=c;
-      if (cursor_x<CURSOR_MAX_X) cursor_x++;
-    }
-    
   }
-
-
-
+  last_scancode=scancode;
   return 0;
 }
 
@@ -128,11 +160,14 @@ int main()
     caca_refresh_display(dp);
     int ret = caca_get_event(dp, CACA_EVENT_KEY_PRESS, &ev, 1000);
     c = (ret)? caca_get_event_key_ch(&ev):0xff;
+    //printf("%i ",c);
 
     uint8_t key = ascii_to_key(c);
   
     process_menu(key);
-
+    //einfach simulieren, die Taste würde länger als ein zyklus gedrückt
+    process_menu(key);
+    
 
     draw_lcd(cv);
   }while(c!=CACA_KEY_CTRL_C);

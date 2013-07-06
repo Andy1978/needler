@@ -30,4 +30,20 @@ const char characters[64] = {  0,   0,   0,    0,   0, ' ',   0,    0,
 #define _TAB   51
 #define _ESC   59
 
+union _modifier_state
+{
+  uint8_t complete;
+  struct
+  {
+    unsigned char SHIFT : 1;
+    unsigned char ALT   : 1;
+    unsigned char STRG  : 1;
+    unsigned char CAPS  : 1;
+    unsigned char un1  : 1;
+    unsigned char un2  : 1;
+    unsigned char un3  : 1;
+    unsigned char un4  : 1;
+  };
+};
+
 #endif //_KEYMAPPING_H_
