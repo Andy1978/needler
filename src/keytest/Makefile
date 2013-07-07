@@ -1,6 +1,9 @@
+.PHONY: clean
 
-testit: main.c
-	gcc -Wall -Wextra -ggdb $^ -lcaca -o $@
+CFLAGS = -Wall -Wextra -ggdb
+
+keytest: main.c
+	gcc $(CFLAGS) $^ -lcaca -o $@
 
 clean:
-	rm -f *.o testit
+	rm -f *.o keytest

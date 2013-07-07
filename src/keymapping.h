@@ -4,7 +4,7 @@
 /* Scancode 23 und 30 ist nicht belegt (nur 62 Tasten) */
 // TODO: in flash schieben
 const char characters[64] = {  0,   0,   0,    0,   0, ' ',   0,    0,
-                             'm', 'b', 'c',  'y', '.',   0,   0,    0,
+                             'm', 'b', 'c',  'y', '.','\r',   0,    0,
                              'n', 'v', 'x',    0, ',', '@',   0,    0,
                              'j', 'g', 'd',  'a', 'l', '#',   0,  '0',
                              'h', 'f', 's',    0, 'k', '<',   0, '\b',
@@ -17,7 +17,7 @@ const char characters[64] = {  0,   0,   0,    0,   0, ' ',   0,    0,
 #define _F2    1
 #define _F1    2
 #define _STRG  3
-#define _F4    4 
+#define _F4    4
 #define _DOWN  6
 #define _LEFT  7
 #define _UP    14
@@ -39,7 +39,7 @@ union _modifier_state
     unsigned char ALT   : 1;
     unsigned char STRG  : 1;
     unsigned char CAPS  : 1;
-    unsigned char un1  : 1;
+    unsigned char OVERWRITE  : 1;
     unsigned char un2  : 1;
     unsigned char un3  : 1;
     unsigned char un4  : 1;
