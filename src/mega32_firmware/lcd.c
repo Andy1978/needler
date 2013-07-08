@@ -512,10 +512,10 @@ void lcd_puts_p(const char *progmem_s)
 
 /*************************************************************************
 Initialize display and select type of cursor
-Input:    dispAttr LCD_DISP_OFF            display off
-                   LCD_DISP_ON             display on, cursor off
-                   LCD_DISP_ON_CURSOR      display on, cursor on
-                   LCD_DISP_CURSOR_BLINK   display on, cursor on flashing
+Input:    dispAttr LCD_DISP_OFF             display off
+                   LCD_DISP_ON              display on, cursor off
+                   LCD_DISP_ON_CURSOR       display on, cursor on
+                   LCD_DISP_ON_CURSOR_BLINK display on, cursor on flashing
 Returns:  none
 *************************************************************************/
 void lcd_init(uint8_t dispAttr)

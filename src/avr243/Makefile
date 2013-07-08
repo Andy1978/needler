@@ -7,7 +7,7 @@
 MCU = atmega32
 FORMAT = ihex
 TARGET = main
-SRC =    $(TARGET).c keymatrix.c lcd.c
+SRC =    $(TARGET).c keymatrix.c lcd.c ../keymapping.c
 ASRC =
 OPT = 2
 

@@ -1,0 +1,71 @@
+7.7.2013 von Andy:
+
+git clone https://github.com/grbl/grbl.git
+
+in ~/src/grbl Makefile gepatched, 
+
+make fuse
+make flash
+
+seriell verbunden mit 9600 baud
+
+
+Anfangs Probleme weil STEP und PULSE zu hoch.
+Laut Datenblatt 3977
+MinimumCommand Active Time before Step Pulse 200ns
+MinimumCommand Active Time after Step Pulse 200ns
+Minimum Step pulse width 1µs
+Minimum Step low width 1µs
+
+Aber vor dem Schmitt Trigger auf dem AMW102
+ein RC Glied mit 10K und ?100n?....
+Im AWK102 DB steht max 500kHz, ich glaube nicht, dass das erreichbar ist.
+
+Polarität STEP & DIR
+LOW am AVR -> LOW am 3977
+
+
+GRBL Parameter, teils durch ausprobieren
+$3, $7 pulse width minimal 15us, darunter keine Bewegung
+$0 und $1 grob ausprobiert
+
+$0=28.200 (x, step/mm)
+$1=28.200 (y, step/mm)
+$2=250.000 (z, step/mm)
+$3=30 (step pulse, usec)
+$4=500.000 (default feed, mm/min)
+$5=1200.000 (default seek, mm/min)
+$6=96 (step port invert mask, int:01100000)
+$7=30 (step idle delay, msec)
+$8=30.000 (acceleration, mm/sec^2)
+$9=0.050 (junction deviation, mm)
+$10=0.100 (arc, mm/segment)
+$11=25 (n-arc correction, int)
+$12=3 (n-decimals, int)
+$13=0 (report inches, bool)
+$14=1 (auto start, bool)
+$15=0 (invert step enable, bool)
+$16=1 (hard limits, bool)
+$17=1 (homing cycle, bool)
+$18=96 (homing dir invert mask, int:01100000)
+$19=200.000 (homing feed, mm/min)
+$20=1000.000 (homing seek, mm/min)
+$21=100 (homing debounce, msec)
+$22=1.000 (homing pull-off, mm)
+
+kann man noch Feintuning machen, gerade $8 sollte noch höher aber zum testen so eingestellt.
+
+
+**** FUSES *****
+fand ich in dem Makefile etwas verwirrend:
+# FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m
+#FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
+# update that line with this when programmer is back up:
+FUSES      = -U hfuse:w:0xd7:m -U lfuse:w:0xff:m
+
+hfuse 0xd7: SPIEN (Enable Serial programming and Data Downloading), EESAVE (EEPROM memory is preserved through chip erase)
+hfuse 0xd2: SPIEN, EESAVE, BOOTSZ1, BOOTRST
+hfuse 0xd9: SPIEN, EESAVE, BOOTSZ1, BOOTSZ0
+
+lfuse 0x24: Ext Low-Freq, Clock output on PORTB, Divide Clock by 8
+lfuse 0xff: Ext Crystal >=8MHz

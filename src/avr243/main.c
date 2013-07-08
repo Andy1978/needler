@@ -12,6 +12,7 @@
 
 ISR(TIMER0_COMP_vect)
 {
+  /*
   lcd_gotoxy(0,0);
   uint8_t temp=key_get();
   char buf[3];
@@ -24,6 +25,10 @@ ISR(TIMER0_COMP_vect)
     if(c) lcd_putc(c);
   }
   lcd_puts("__");
+  * */
+  
+  uint8_t temp=key_get();
+  process_menu(temp);
 
 }
 

@@ -55,6 +55,9 @@
 #include <util/delay.h>
 #include "lcd.h"
 #include "uart.h"
+#include "keymatrix.h"
+#include "../keymapping.h"
+#include "../menu.h"
 //#include "../../hf2gcode/src/libhf2gcode.h"
 
 #define UART_BAUD_RATE 38400
@@ -63,6 +66,25 @@ volatile uint8_t do_update_lcd;
 volatile uint8_t uart_error;
 volatile uint16_t g_line;
 
+char text_buffer[BUFFER_HEIGHT][BUFFER_WIDTH+1];
+uint8_t cursor_x;  //0..BUFFER_WIDTH-1
+uint8_t cursor_y;  //0..BUFFER_HEIGHT-1
+uint8_t viewport_x;
+uint8_t viewport_y;
+
+//LCD großer Ausschnitt von text_buffer zeigen
+//Cursor cx, cy wird dargestellt
+
+//~ void draw_lcd(char *line, uint8_t cx, uint8_t cy)
+//~ {
+  //~ //lcd_command(LCD_DISP_OFF);
+  //~ lcd_puts("huhu welt");
+  //~ lcd_gotoxy(0,0);
+  //~ //lcd_gotoxy(cx,cy);
+  //~ //lcd_command(LCD_DISP_ON_CURSOR_BLINK);
+//~ }  
+  
+  
 //  Integer (Basis 10) rechtsbündig auf LCD ausgeben.
 void lcd_put_int(int16_t val, uint8_t len)
 {
@@ -84,6 +106,7 @@ void lcd_put_int32(int32_t val, uint8_t len)
   lcd_puts(buffer);
 }
 
+/*
 void update_lcd(void)
 {
   char buf[20];
@@ -103,22 +126,35 @@ void update_lcd(void)
   itoa(cnt, buf, 10);
   lcd_puts(buf);
 }
-
+*/
 
 //ISR(TIMER0_COMP_vect, ISR_NOBLOCK) //1kHz
 ISR(TIMER0_COMP_vect) //1kHz
 {
   static int16_t cnt=0;
-  if (cnt++ == 1000)
+    
+  uint8_t temp=key_get();
+  process_menu(temp);
+  //~ if(temp!=255)
+  //~ {
+    //~ lcd_gotoxy(0,0);
+    //~ lcd_puts("hello");
+  //~ }
+  if (cnt++ == 200)
   {
     cnt = 0;
-  }else if(cnt==500)
-    do_update_lcd=1;
-}
-
-ISR(ADC_vect) //ca. 125kHz
-{
-  int16_t tmp=ADC-512;
+    //lcd_command(LCD_DISP_ON);
+    lcd_gotoxy(0,0);
+   
+    uint8_t x;
+    for(x=0;x<LCD_WIDTH;x++)
+      lcd_putc(text_buffer[viewport_y][viewport_x+x]);
+    for(x=0;x<LCD_WIDTH;x++)
+      lcd_putc(text_buffer[viewport_y+1][viewport_x+x]);
+    
+    lcd_gotoxy(cursor_x-viewport_x,cursor_y-viewport_y);
+    lcd_command(LCD_DISP_ON_CURSOR);
+  }
 }
 
 // UART bearbeiten. Es gibt nur ein Telegramm mit allen Sollwerten
@@ -158,11 +194,6 @@ static FILE mystdout = FDEV_SETUP_STREAM(uart_putchar, NULL,
 
 static int uart_putchar(char c, FILE *stream)
 {
-
-  //if (c == '\n')
-  //  uart_putchar('\r', stream);
-  //loop_until_bit_is_set(UCSRA, UDRE);
-  //UDR = c;
   uart_putc(c);
   return 0;
 }
@@ -172,10 +203,10 @@ int main(void)
   stdout = &mystdout;
   //uart_init(UART_BAUD_SELECT_DOUBLE_SPEED(UART_BAUD_RATE,F_CPU));
   uart_init(UART_BAUD_SELECT(UART_BAUD_RATE,F_CPU));
-  lcd_init(LCD_DISP_ON);
+  lcd_init(LCD_DISP_ON_CURSOR_BLINK);
   lcd_clrscr();
   lcd_gotoxy(0,0);
-  lcd_puts_P("Needler v0.2\n");
+  lcd_puts_P("Needler v0.3\n");
   lcd_gotoxy(0,1);
   lcd_puts_P(__DATE__" aw");
 
@@ -192,8 +223,8 @@ int main(void)
   //PB1: IN: Z_STEP
   PORTB |= _BV(PB1);
 
-
   lcd_clrscr();
+  clr_text_buffer();
 
   /*** TIMER0 ***/
   OCR0=250;
@@ -211,19 +242,6 @@ int main(void)
   //Prescaler = 1 (page 110)
   //TCCR1B = _BV(CS10);
 
-
-  /*** ADC ***/
-  //Prescaler 128 = 125kHz ADC Clock, AutoTrigger, Interrupts enable
-  //ADCSRA = _BV(ADEN) | _BV(ADPS0) | _BV(ADPS1) | _BV(ADPS2) | _BV(ADATE) | _BV(ADSC) | _BV(ADIE);
-
-  //AVCC with external capacitor at AREF, internal 2.56V bandgap
-  //siehe S. 215
-  //8=Multiplexer ADC0 positive Input, ADC0 negative, 10x gain
-  //9=Multiplexer ADC1 positive Input, ADC0 negative, 10x gain
-  //ADMUX = _BV(REFS1) | _BV(REFS0) | 11;
-  //ADC in Free Running mode
-  //SFIOR &= ~(_BV(ADTS2) | _BV(ADTS1) | _BV(ADTS0));
-
   //enable global interrupts
   sei();
   for (;;)    /* main event loop */
@@ -232,7 +250,7 @@ int main(void)
       processUART();
       if(do_update_lcd)
       {
-        update_lcd();
+        //update_lcd();
         do_update_lcd=0;
       }
 /*
