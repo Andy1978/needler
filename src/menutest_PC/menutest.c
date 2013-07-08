@@ -97,7 +97,7 @@ void draw_lcd(char *line0, char *line1, uint8_t x, uint8_t y, uint8_t cx, uint8_
   caca_draw_cp437_box(cv, LCD_LEFT, LCD_TOP, LCD_WIDTH+2, LCD_HEIGHT+2);
   caca_put_str(cv, LCD_LEFT+1, LCD_TOP+1, line0);
   caca_put_str(cv, LCD_LEFT+1, LCD_TOP+2, line1);
-  
+
   //aktuelle Cursorposition rot hervorheben
   int8_t tx = cx-x;
   int8_t ty = cy-y;

@@ -26,7 +26,7 @@ ISR(TIMER0_COMP_vect)
   }
   lcd_puts("__");
   * */
-  
+
   uint8_t temp=key_get();
   process_menu(temp);
 

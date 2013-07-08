@@ -219,12 +219,12 @@ int process_menu(uint8_t scancode)
   {
     char line0[LCD_WIDTH+1];
     char line1[LCD_WIDTH+1];
-    
+
     strncpy(line0,text_buffer[viewport_y]+viewport_x,LCD_WIDTH);
     strncpy(line1,text_buffer[viewport_y+1]+viewport_x,LCD_WIDTH);
     line0[LCD_WIDTH]=0;
     line1[LCD_WIDTH]=0;
-    
+
     draw_lcd(line0, line1, viewport_x, viewport_y, cursor_x, cursor_y);
   }
 #endif
