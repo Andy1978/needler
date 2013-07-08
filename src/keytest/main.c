@@ -9,6 +9,7 @@
 /*
  * 6.7.2013 Andreas Weber
  * Testprogramm für die Menüsteuerung
+ * 8.7. grundlegend erweitert
  *
  * ALT rastet und man kann den "viewport" mit den Cursortasten verschieben
  * CAPS rastet für Großschreibung
@@ -18,8 +19,11 @@
  * ENDE ans Ende
  * ESC verlässt den Editor oder im Menü eine Ebene höher springen
  * ENTER im Editormodus ans Ende der nächsten Zeile
- *
  * Mit SHIFT+ENTF kann zwischen Einfügemodus und Überschreibmodus umgeschaltet werden
+ *
+ * TODO bzw. zu überlegen
+ * Soll "ENTER" eine neue Zeile einfügen und die alte, unterste rauswerfen?
+ * äöüß ?
  */
 
 //Puffer ohne \0
@@ -147,56 +151,33 @@ void cursor_viewport_calc(uint8_t scancode, uint8_t *cx, uint8_t *cy, uint8_t *v
   }
   else //Wenn Pfeile ohne ALT, Cursor bis an Rand verschieben, dann Viewport
   {
-    if(scancode==_UP)
-    {
-      if (*cy>0)
-      {
-        (*cy)--;
-        if ((*cy-*vy)<0 && *vy>0)
-          (*vy)--;
-      }
-    }
-    else if(scancode==_LEFT)
-    {
-      if (*cx>0)
-      {
-        (*cx)--;
-        if ((*cx-*vx)<0 && *vx>0)
-          (*vx)--;
-      }
-    }
-    else if(scancode==_DOWN)
-    {
-      if (*cy<(BUFFER_HEIGHT-1))
-      {
-        (*cy)++;
-        if ((*cy-*vy+1)>LCD_HEIGHT && *vy<(BUFFER_HEIGHT-1))
-          (*vy)++;
-      }
-    }
-    else if(scancode==_RIGHT)
-    {
-      if (*cx<(BUFFER_WIDTH-1))
-      {
-        (*cx)++;
-        if ((*cx-*vx+1)>LCD_WIDTH && *vx<(BUFFER_WIDTH-1))
-          (*vx)++;
-      }
-    }
+    if(scancode==_UP && (*cy)>0)   (*cy)--;
+    if(scancode==_LEFT && (*cx)>0) (*cx)--;
+    if(scancode==_DOWN && (*cy<(BUFFER_HEIGHT-1))) (*cy)++;
+    if(scancode==_RIGHT && (*cx<(BUFFER_WIDTH-1))) (*cx)++;
+    //DEBUG
+    //printf("cx=%i cy=%i vx=%i vy=%i\n",*cx,*cy,*vx,*vy);
+    if ((*cy-*vy)<0) (*vy)=(*cy);
+    if ((*cx-*vx)<0) (*vx)=(*cx);
+    if ((*cy-*vy)>(LCD_HEIGHT-1)) (*vy)=(*cy)-LCD_HEIGHT+1;
+    if ((*cx-*vx)>(LCD_WIDTH-1)) (*vx)=(*cx)-LCD_WIDTH+1;
   }
-  //DEBUG
-  //printf("cx=%i, cy=%i, vx=%i, vy=%i\n",*cx,*cy,*vx,*vy);
 }
 
+// Die Position des Textendes
+// (nicht \0 sondern das letzte druckbare Zeichen)
+// zurückgeben
+uint8_t get_line_end(uint8_t y)
+{
+  uint8_t i;
+  for(i=BUFFER_WIDTH-1;i>0 && (text_buffer[y][i]==' ');i--);
+  return (i==(BUFFER_WIDTH-1) || !i)? i:i+1;
+}
 
 // Scancode ist der Code, wie er von der 8x8 Folientastatur kommt
 // 255 = keine Taste gedrückt
 // 0..63 die jeweilige Taste (Siehe CSV Tabelle)
 
-/*
- * TODO und BUGS
- * Umlaute äöü und ß
- */
 int process_menu(uint8_t scancode)
 {
   static uint8_t cursor_x=0;  //0..BUFFER_WIDTH-1
@@ -220,27 +201,43 @@ int process_menu(uint8_t scancode)
         exit(-1);
       }
       uint8_t c=characters[scancode];
+      uint8_t printable_char=0;
       //Prüfen ob ASCII Zeichen
       if(c)
       {
+        //printf("%c %i\n",c,c);
         if(modifier_state.SHIFT || modifier_state.CAPS)
-         c = toupper(c);
-
+        { //alternative Belegung
+          switch(c)
+          {
+            case '1': c='!'; break;
+            case '2': c='"'; break;
+            case '3': c='^'; break;
+            case '4': c='$'; break;
+            case '5': c='%'; break;
+            case '6': c='&'; break;
+            case '7': c='/'; break;
+            case '8': c='('; break;
+            case '9': c=')'; break;
+            case '0': c='='; break;
+            case '\\': c='?'; break;
+            case '+': c='*'; break;
+            case '#': c='\''; break;
+            case '<': c='>'; break;
+            case ',': c=';'; break;
+            case '.': c=':'; break;
+            case '@': c='|'; break;
+            default:
+             c = toupper(c);
+             break;
+          }
+        }
         //Ist es auf dem LCD anzeigbar?
         if(isprint(c))
         {
           //Shift zurücksetzen
           modifier_state.SHIFT=0;
-
-          //Einfügen oder Überschreiben?
-          if(modifier_state.OVERWRITE)
-            text_buffer[cursor_y][cursor_x]=c;
-          else
-            insert_ch(cursor_x, cursor_y, c);
-
-          //Ein Zeichen weiter rechts
-          cursor_viewport_calc(_RIGHT, &cursor_x,&cursor_y,&viewport_x,&viewport_y, 0);
-
+          printable_char=c;
         }
         else
         {
@@ -254,8 +251,14 @@ int process_menu(uint8_t scancode)
               delete_ch(cursor_x, cursor_y);
             }
           }
-
+          else if(c=='\r')
+          {
+            cursor_viewport_calc(_DOWN, &cursor_x,&cursor_y,&viewport_x,&viewport_y, 0);
+            cursor_x=get_line_end(cursor_y);
+            cursor_viewport_calc(0, &cursor_x,&cursor_y,&viewport_x,&viewport_y, 0);
+          }
         }
+
       }
       else /*muss ein Modifier, Cursor, Funktionstaste oder ähnlich sein*/
       {
@@ -271,14 +274,44 @@ int process_menu(uint8_t scancode)
                       else
                         delete_ch(cursor_x, cursor_y);
                       break;
+          case _ENDE :  cursor_x=(modifier_state.SHIFT)?0:get_line_end(cursor_y);
+                        modifier_state.SHIFT=0;
+                        break;
           default:
             break;
         }
 
-        cursor_viewport_calc(scancode, &cursor_x,&cursor_y,&viewport_x,&viewport_y, modifier_state.ALT);
-
-
+        //Nur wenn nicht SHIFT, sonst könnten es
+        //Cursortasten -_{} oder F3, F4 [] sein
+        if(!modifier_state.SHIFT)
+          cursor_viewport_calc(scancode, &cursor_x,&cursor_y,&viewport_x,&viewport_y, modifier_state.ALT);
+        else
+          switch(scancode)
+          {
+            case _DOWN:  printable_char='-'; break;
+            case _LEFT:  printable_char='_'; break;
+            case _UP:    printable_char='{'; break;
+            case _RIGHT: printable_char='}'; break;
+            case _F3:    printable_char='['; break;
+            case _F4:    printable_char=']'; break;
+            default:
+              break;
+          }
+          if(printable_char) //Shift zurücksetzen
+            modifier_state.SHIFT=0;
       }
+      if(isprint(printable_char))
+      {
+        //Einfügen oder Überschreiben?
+        if(modifier_state.OVERWRITE)
+          text_buffer[cursor_y][cursor_x]=printable_char;
+        else
+          insert_ch(cursor_x, cursor_y, printable_char);
+
+        //Ein Zeichen weiter rechts
+        cursor_viewport_calc(_RIGHT, &cursor_x,&cursor_y,&viewport_x,&viewport_y, 0);
+      }
+
     }
   }
   last_scancode=scancode;
@@ -312,22 +345,14 @@ void insert_ch(const uint8_t x, const uint8_t y, const char c)
 void delete_ch(uint8_t x, const uint8_t y)
 {
   //man könnte auch memmove nehmen. In libc für AVR drin?
-  for(; x<BUFFER_WIDTH-3; ++x)
+  for(; x<BUFFER_WIDTH-1; ++x)
     text_buffer[y][x]=text_buffer[y][x+1];
-  text_buffer[y][BUFFER_WIDTH-2]=' ';
+  text_buffer[y][BUFFER_WIDTH-1]=' ';
 }
 
 int main()
 {
   clr_text_buffer();
-
-  strncpy(text_buffer[0],"Matrix Test",17);
-  strncpy(text_buffer[1],"1234567890123456",17);
-
-
-  text_buffer[0][BUFFER_WIDTH-1]='%';
-  text_buffer[3][BUFFER_WIDTH-1]='%';
-
   caca_display_t *dp;
   caca_event_t ev;
   dp = caca_create_display(NULL);
