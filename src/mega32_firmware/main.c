@@ -60,7 +60,8 @@
 #include "../menu.h"
 //#include "../../hf2gcode/src/libhf2gcode.h"
 
-#define UART_BAUD_RATE 38400
+//#define UART_BAUD_RATE 38400
+#define UART_BAUD_RATE 9600
 
 volatile uint8_t do_update_lcd;
 volatile uint8_t uart_error;
@@ -82,9 +83,9 @@ uint8_t viewport_y;
   //~ lcd_gotoxy(0,0);
   //~ //lcd_gotoxy(cx,cy);
   //~ //lcd_command(LCD_DISP_ON_CURSOR_BLINK);
-//~ }  
-  
-  
+//~ }
+
+
 //  Integer (Basis 10) rechtsbündig auf LCD ausgeben.
 void lcd_put_int(int16_t val, uint8_t len)
 {
@@ -132,7 +133,7 @@ void update_lcd(void)
 ISR(TIMER0_COMP_vect) //1kHz
 {
   static int16_t cnt=0;
-    
+
   uint8_t temp=key_get();
   process_menu(temp);
   //~ if(temp!=255)
@@ -145,20 +146,18 @@ ISR(TIMER0_COMP_vect) //1kHz
     cnt = 0;
     //lcd_command(LCD_DISP_ON);
     lcd_gotoxy(0,0);
-   
+
     uint8_t x;
     for(x=0;x<LCD_WIDTH;x++)
       lcd_putc(text_buffer[viewport_y][viewport_x+x]);
     for(x=0;x<LCD_WIDTH;x++)
       lcd_putc(text_buffer[viewport_y+1][viewport_x+x]);
-    
+
     lcd_gotoxy(cursor_x-viewport_x,cursor_y-viewport_y);
     lcd_command(LCD_DISP_ON_CURSOR);
   }
 }
 
-// UART bearbeiten. Es gibt nur ein Telegramm mit allen Sollwerten
-// und eine Antwort mit allen Istwerten bzw. Status
 void processUART(void)
 {
   //~ //Alle Daten empfangen
@@ -244,15 +243,52 @@ int main(void)
 
   //enable global interrupts
   sei();
+  uint8_t running=0;
   for (;;)    /* main event loop */
     {
       //printf("abcdef\n");
       processUART();
-      if(do_update_lcd)
+
+
+      if (bit_is_clear(PIND,3) && !running)
       {
-        //update_lcd();
-        do_update_lcd=0;
+        running=1;
+        uart_puts_P("$X\n");
+        uart_puts_P("$H\n");
+        uart_puts_P("G21\n");
+        uart_puts_P("G90\n");
+        uart_puts_P("G64\n");
+        uart_puts_P("G40\n");
+        uart_puts_P("G49\n");
+        uart_puts_P("G94\n");
+        uart_puts_P("G17\n");
+        uart_puts_P("M3 S1000\n");
+        uart_puts_P("F800.00\n");
+        uart_puts_P("G0 Z1.00\n");
+        uart_puts_P("G0 X15 Y15\n");
+        uart_puts_P("G1 Z-1\n");
+        uart_puts_P("G2 X25 Y25 I10\n");
+        uart_puts_P("G0 Z1\n");
+        uart_puts_P("G0 X35 Y15\n");
+        uart_puts_P("G1 Z-1\n");
+        uart_puts_P("G2 X25 Y5 I-10\n");
+        uart_puts_P("G0 Z1\n");
+        uart_puts_P("G0 X15 Y15\n");
+        uart_puts_P("M5\n");
+        uart_puts_P("M30\n");
+
+        for(uint8_t i=0;i<160;++i)
+          _delay_ms(15);
       }
+      if (bit_is_set(PIND,3))
+        running=0;
+
+
+      //if(do_update_lcd)
+      //{
+        //update_lcd();
+      //  do_update_lcd=0;
+      //}
 /*
       if (bit_is_clear(PIND,3))
       {
