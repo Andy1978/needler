@@ -9,7 +9,6 @@ make flash
 
 seriell verbunden mit 9600 baud
 
-
 Anfangs Probleme weil STEP und PULSE zu hoch.
 Laut Datenblatt 3977
 MinimumCommand Active Time before Step Pulse 200ns
@@ -27,7 +26,10 @@ LOW am AVR -> LOW am 3977
 
 GRBL Parameter, teils durch ausprobieren
 $3, $7 pulse width minimal 15us, darunter keine Bewegung
-$0 und $1 grob ausprobiert
+$0 und $1 grob ausprobiert.
+Berechnet:
+200 Steps/rev * 8 (Microsteps) / (18mm Zahnraddurchmesser * pi)
+200*8/(18*pi) = 28.294 steps/mm
 
 $0=28.200 (x, step/mm)
 $1=28.200 (y, step/mm)
