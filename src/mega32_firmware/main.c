@@ -116,6 +116,7 @@ void update_lcd(void)
   }
   else //normaler Editor
   {
+    lcd_command(LCD_DISP_OFF);
     lcd_gotoxy(0,0);
     uint8_t x;
     uint8_t cx, cy, vx, vy;
@@ -126,6 +127,7 @@ void update_lcd(void)
     for(x=0;x<LCD_WIDTH;x++)
       lcd_putc(get_text_buffer(vy+1)[vx+x]);
     lcd_gotoxy(cx-vx,cy-vy);
+    lcd_command(LCD_DISP_ON_CURSOR);
   }
 }
 
@@ -179,9 +181,9 @@ void get_grbl_response(void)
 
   while(uart_GetRXCount()<3);
   uint16_t rx_tmp;
-  char temp[4];
+  char temp[5];
   uint8_t i;
-  for(i=0;i<3;++i)
+  for(i=0;i<5;++i)
   {
     rx_tmp=uart_getc();
     temp[i]=rx_tmp & 0xFF;
@@ -189,13 +191,13 @@ void get_grbl_response(void)
       uart_error=((rx_tmp & 0xFF00) >> 8);
   }
   temp[3]=0;
-  if(!strcmp(temp,"ok\r"))
+  if(!strcmp(temp,"ok\r\n"))
     grbl_num_ok++;
   else //wird wohl ein Fehler sein
   {
     grbl_num_err++;
     strcpy(grbl_error_msg,temp);
-    i=3;
+    i=4;
     //auf das Ende warten
     do
     {
@@ -215,6 +217,8 @@ void get_grbl_response(void)
     while(uart_getc()!=UART_NO_DATA);
   }
   update_status_lcd();
+  //for (i=0;i<200;++i)
+  //  _delay_ms(15);
 }
 
 static int uart_putchar(char c, FILE *stream);
@@ -301,7 +305,8 @@ int main(void)
       {
         grbl_num_err=0;
         grbl_num_ok=0;
-
+        //empty read
+        while(uart_getc()!=UART_NO_DATA);
         running=1;
         uart_puts_P("$X\n");
         get_grbl_response();
@@ -310,12 +315,6 @@ int main(void)
         uart_puts_P("G21\n");
         get_grbl_response();
         uart_puts_P("G90\n");
-        get_grbl_response();
-        uart_puts_P("G64\n");
-        get_grbl_response();
-        uart_puts_P("G40\n");
-        get_grbl_response();
-        uart_puts_P("G49\n");
         get_grbl_response();
         uart_puts_P("G94\n");
         get_grbl_response();

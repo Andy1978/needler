@@ -54,7 +54,7 @@ void key_init()
 unsigned char key_get()
 {
   /* Local variables */
-  uint8_t lineResult;         // Resulting column lines
+  uint8_t lineResult=0xff;         // Resulting column lines
   uint8_t rowResult;          // Resulting row lines
   uint8_t tempScan;           // Temporary scancode
   uint8_t debcnt=0;
