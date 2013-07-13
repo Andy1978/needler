@@ -248,7 +248,7 @@ int main(void)
   lcd_init(LCD_DISP_ON_CURSOR);
   lcd_clrscr();
   lcd_gotoxy(0,0);
-  lcd_puts_P("Needler v0.4\n");
+  lcd_puts_P("Needler v0.5\n");
   lcd_gotoxy(0,1);
   lcd_puts_P(__DATE__" aw");
 
@@ -327,10 +327,10 @@ int main(void)
         //empty read
         while(uart_getc()!=UART_NO_DATA);
         running=1;
-        //~ uart_puts_P("$X\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("$H\n");
-        //~ get_grbl_response();
+        uart_puts_P("$X\n");
+        get_grbl_response();
+        uart_puts_P("$H\n");
+        get_grbl_response();
         //~ uart_puts_P("G21\n");
         //~ get_grbl_response();
         //~ uart_puts_P("G90\n");
@@ -382,7 +382,7 @@ int main(void)
              //~ char align,         /* Align lines l(eft) r(ight) c(enter) */
              //~ char use_inch);     /* Use inch instead of mm as base unit */
                      
-        int r = init_get_gcode_line("rowmans", "Hello world!", 1, 1, 1, -1, 7, 0.3, 800, 3, 1, 'l', 0);
+        int r = init_get_gcode_line("rowmans", "Hello world!", 1, 1, 1, -1, 7, 0.3, 1100, 3, 0, 'l', 0);
         char buf[200];
         while((g_line = get_gcode_line (buf, 200))!=-1)
         {
@@ -391,6 +391,10 @@ int main(void)
           get_grbl_response();
         }
         PORTD &= (uint8_t) ~_BV(PD6);
+        uart_puts_P("G0X1Y1\n");
+        get_grbl_response();
+        uart_puts_P("$H\n");
+        get_grbl_response();
         
         //empty read
         while(uart_getc()!=UART_NO_DATA);
