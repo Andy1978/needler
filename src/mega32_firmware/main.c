@@ -63,7 +63,7 @@
 #include "uart.h"
 #include "keymatrix.h"
 #include "../menu.h"
-//#include "../../../hf2gcode/src/libhf2gcode.h"
+#include "../../../hf2gcode/src/libhf2gcode.h"
 
 //#define UART_BAUD_RATE 38400
 #define UART_BAUD_RATE 9600
@@ -327,46 +327,71 @@ int main(void)
         //empty read
         while(uart_getc()!=UART_NO_DATA);
         running=1;
-        uart_puts_P("$X\n");
-        get_grbl_response();
-        uart_puts_P("$H\n");
-        get_grbl_response();
-        uart_puts_P("G21\n");
-        get_grbl_response();
-        uart_puts_P("G90\n");
-        get_grbl_response();
-        uart_puts_P("G94\n");
-        get_grbl_response();
-        uart_puts_P("G17\n");
-        get_grbl_response();
-        uart_puts_P("M3 S1000\n");
-        get_grbl_response();
-        uart_puts_P("F800.00\n");
-        get_grbl_response();
-        uart_puts_P("G0 Z1.00\n");
-        get_grbl_response();
-        uart_puts_P("G0 X15 Y15\n");
-        get_grbl_response();
-        uart_puts_P("G1 Z-1\n");
-        get_grbl_response();
-        uart_puts_P("G2 X25 Y25 I10\n");
-        get_grbl_response();
-        uart_puts_P("G0 Z1\n");
-        get_grbl_response();
-        uart_puts_P("G0 X35 Y15\n");
-        get_grbl_response();
-        uart_puts_P("G1 Z-1\n");
-        get_grbl_response();
-        uart_puts_P("G2 X25 Y5 I-10\n");
-        get_grbl_response();
-        uart_puts_P("G0 Z1\n");
-        get_grbl_response();
-        uart_puts_P("G0 X15 Y15\n");
-        get_grbl_response();
-        uart_puts_P("M5\n");
-        get_grbl_response();
-        uart_puts_P("M30\n");
+        //~ uart_puts_P("$X\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("$H\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G21\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G90\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G94\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G17\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("M3 S1000\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("F800.00\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G0 Z1.00\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G0 X15 Y15\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G1 Z-1\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G2 X25 Y25 I10\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G0 Z1\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G0 X35 Y15\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G1 Z-1\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G2 X25 Y5 I-10\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G0 Z1\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G0 X15 Y15\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("M5\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("M30\n");
+
+//~ int init_get_gcode_line (
+             //~ char *font,   /* used font, e.g. "rowmans" or "scriptc" */
+             //~ char *text,   /* text, e.g. "Hello world!\nsecond line" */
+             //~ double X0,          /* the X-Axis offset in mm */
+             //~ double Y0,          /* the Y-Axis offset in mm */
+             //~ double Z_up,        /* the Z-Axis value in mm when it's up */
+             //~ double Z_down,      /* the Z-Axis value in mm when it's down */
+             //~ double yinc,        /* increment between to lines for multiline */
+             //~ double scale,       /* Scale factor (mm/hershey units) */
+             //~ double feed,        /* Linear feed rate in mm/min */
+             //~ int precision,      /* Precision for floating points in generated g-code */
+             //~ char verbose,       /* Verbose description in generated G-Code */
+             //~ char align,         /* Align lines l(eft) r(ight) c(enter) */
+             //~ char use_inch);     /* Use inch instead of mm as base unit */
+                     
+        int r = init_get_gcode_line("rowmans", "Hello world!", 1, 1, 1, -1, 7, 0.3, 800, 3, 1, 'l', 0);
+        char buf[200];
+        while((g_line = get_gcode_line (buf, 200))!=-1)
+        {
+          uart_puts(buf);
+          uart_putc('\n');
+          get_grbl_response();
+        }
         PORTD &= (uint8_t) ~_BV(PD6);
+        
         //empty read
         while(uart_getc()!=UART_NO_DATA);
         do_update_lcd=1;
