@@ -145,6 +145,11 @@ void update_status_lcd(void)
   while(l--) lcd_putc(' ');
 }
 
+ISR(INT0_vect)
+{
+  TCNT1=0;
+}
+
 //ISR(TIMER0_COMP_vect, ISR_NOBLOCK) //1kHz
 ISR(TIMER0_COMP_vect) //1kHz
 {
@@ -171,6 +176,10 @@ ISR(TIMER0_COMP_vect) //1kHz
         do_update_lcd=1;
     }
   }
+  if(TCNT1L>5 && bit_is_set(PIND,2))
+    PORTD |= _BV(PD6);
+  if(TCNT1L>5 && bit_is_clear(PIND,2))
+    PORTD &= (uint8_t) ~_BV(PD6);
 }
 
 void get_grbl_response(void)
@@ -179,18 +188,18 @@ void get_grbl_response(void)
   //Ich würde bei jedem "ok" eine Variable hoch laufen lassen und auf dem LCD
   //anzeigen und bei Fehlermeldung abbrechen?
 
-  while(uart_GetRXCount()<3);
+  while(uart_GetRXCount()<4);
   uint16_t rx_tmp;
   char temp[5];
   uint8_t i;
-  for(i=0;i<5;++i)
+  for(i=0;i<4;++i)
   {
     rx_tmp=uart_getc();
     temp[i]=rx_tmp & 0xFF;
     if(rx_tmp & 0xFF00)
       uart_error=((rx_tmp & 0xFF00) >> 8);
   }
-  temp[3]=0;
+  temp[4]=0;
   if(!strcmp(temp,"ok\r\n"))
     grbl_num_ok++;
   else //wird wohl ein Fehler sein
@@ -276,6 +285,16 @@ int main(void)
   //Prescaler = 1 (page 110)
   //TCCR1B = _BV(CS10);
 
+  /** TIMER1 **/
+  //External clock source on T1 pin. Clock on rising edge.
+  TCCR1B = _BV(CS12) | _BV(CS11) | _BV(CS10);
+  //OCR1x=5;
+
+  /** External Interrupt INT0 PD2 **/
+  //Any logical change on INT0 generates an interrupt request.
+  MCUCR = _BV(ISC00);
+  GICR = _BV (INT0);
+
   //enable global interrupts
   sei();
   uint8_t running=0;
@@ -347,6 +366,7 @@ int main(void)
         uart_puts_P("M5\n");
         get_grbl_response();
         uart_puts_P("M30\n");
+        PORTD &= (uint8_t) ~_BV(PD6);
         //empty read
         while(uart_getc()!=UART_NO_DATA);
         do_update_lcd=1;
