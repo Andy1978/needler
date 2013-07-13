@@ -7,22 +7,6 @@
  * 6.7.2013 Andreas Weber
  * Testprogramm für die Menüsteuerung
  * 8.7. grundlegend erweitert
- *
- * ALT rastet und man kann den "viewport" mit den Cursortasten verschieben
- * CAPS rastet für Großschreibung
- * STRG + Pfeil hoch = größere Schrift
- * STRG + Pfeil runter = kleinere Schrift
- * POS1 springt an den Anfang der Zeile
- * ENDE ans Ende
- * ESC verlässt den Editor oder im Menü eine Ebene höher springen
- * ENTER im Editormodus ans Ende der nächsten Zeile
- * Mit SHIFT+ENTF kann zwischen Einfügemodus und Überschreibmodus umgeschaltet werden
- * F1 Schrift kleiner
- * F2 Schrift größer
- *
- * TODO bzw. zu überlegen
- * Soll "ENTER" eine neue Zeile einfügen und die alte, unterste rauswerfen?
- * äöüß ?
  */
 
 caca_canvas_t *cv;

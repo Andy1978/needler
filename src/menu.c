@@ -4,6 +4,24 @@
   extern caca_canvas_t *cv;
 #endif
 
+/* ALT rastet und man kann den "viewport" mit den Cursortasten verschieben
+ * CAPS rastet für Großschreibung
+ * STRG + Pfeil hoch = größere Schrift
+ * STRG + Pfeil runter = kleinere Schrift
+ * POS1 springt an den Anfang der Zeile
+ * ENDE ans Ende
+ * ESC verlässt den Editor oder im Menü eine Ebene höher springen
+ * ENTER im Editormodus ans Ende der nächsten Zeile
+ * Mit SHIFT+ENTF kann zwischen Einfügemodus und Überschreibmodus umgeschaltet werden
+ * F1 Schrift kleiner
+ * F2 Schrift größer
+ * F4 Schrift von rowmans zu scripts und umgekehrt wechseln
+ *
+ * TODO bzw. zu überlegen
+ * Soll "ENTER" eine neue Zeile einfügen und die alte, unterste rauswerfen? Vorerst nicht so implementiert
+ * äöüß ?
+ */
+
 char text_buffer[BUFFER_HEIGHT][BUFFER_WIDTH+1];
 uint8_t cursor_x;  //0..BUFFER_WIDTH-1
 uint8_t cursor_y;  //0..BUFFER_HEIGHT-1
@@ -11,6 +29,8 @@ uint8_t viewport_x;
 uint8_t viewport_y;
 
 extern uint8_t font_size;
+extern char font_name[10];
+extern uint8_t updated_settings;
 
 /* Scancode 23 und 30 ist nicht belegt (nur 62 Tasten) */
 // TODO: bei AVR in Flash schieben?
@@ -122,6 +142,7 @@ int process_menu(uint8_t scancode)
 {
   static union _modifier_state modifier_state;
   static uint8_t last_scancode;
+  uint8_t ret=0;
 
   //Nur Flanke auswerten
   if(last_scancode==0xff && scancode!=0xff)
@@ -191,7 +212,6 @@ int process_menu(uint8_t scancode)
             cursor_viewport_calc(0, &cursor_x,&cursor_y,&viewport_x,&viewport_y, 0);
           }
         }
-
       }
       else /*muss ein Modifier, Cursor, Funktionstaste oder ähnlich sein*/
       {
@@ -210,8 +230,9 @@ int process_menu(uint8_t scancode)
           case _ENDE :  cursor_x=(modifier_state.SHIFT)?0:get_line_end(cursor_y);
                         modifier_state.SHIFT=0;
                         break;
-          case _F1: if(font_size>2) font_size--; break;
-          case _F2: if(font_size<20) font_size++; break;
+          case _F1: if(font_size>2) font_size--; updated_settings=1; break;
+          case _F2: if(font_size<9) font_size++; updated_settings=1; break;
+          case _F4: strncpy(font_name,strcmp(font_name,"rowmans")? "rowmans": "scripts", 10); updated_settings=1; break;
 
           default:
             break;
@@ -247,7 +268,7 @@ int process_menu(uint8_t scancode)
         //Ein Zeichen weiter rechts
         cursor_viewport_calc(_RIGHT, &cursor_x,&cursor_y,&viewport_x,&viewport_y, 0);
       }
-
+      ret=1;
     }
   }
   last_scancode=scancode;
@@ -267,5 +288,5 @@ int process_menu(uint8_t scancode)
   }
 #endif
 
-  return 0;
+  return ret;
 }

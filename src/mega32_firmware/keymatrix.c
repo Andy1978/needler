@@ -57,9 +57,18 @@ unsigned char key_get()
   uint8_t lineResult;         // Resulting column lines
   uint8_t rowResult;          // Resulting row lines
   uint8_t tempScan;           // Temporary scancode
+  uint8_t debcnt=0;
 
-  /*  Find column of keypress */
-  lineResult = COLPIN;            // Get column lines
+
+  //wait until COLPIN is stable for at least 100us
+  while(debcnt<100)
+  {
+    if(COLPIN!=lineResult)
+      debcnt=0;
+    else
+      debcnt++;
+    lineResult = COLPIN;
+  }
 
   if( lineResult != 0xFF )          // Any column lines low ?
   {
@@ -81,12 +90,10 @@ unsigned char key_get()
     /* Find row of keypress */
     rowResult = ROWPIN;            // Get row lines
 
-    /* Set original port directions */
     COLPORT = 0xFF;               // Drive all column lines high
     ROWPORT = 0x00;               // Disable pull-up on row lines
     COLDIR = 0x00;                // Set column lines to input, already pulled up
     ROWDIR = 0xFF;                // Set row lines to output, alreay driven low
-
 
     if( rowResult != 0xFF )          // Any row lines low ?
     {

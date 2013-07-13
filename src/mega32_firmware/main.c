@@ -44,6 +44,13 @@
  *
  * ***********************************************/
 
+/*
+ * TODO:
+ * Kontaktprellen Tastatur
+ *
+ *
+ *
+ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -64,9 +71,16 @@
 volatile uint8_t do_update_lcd;
 volatile uint8_t uart_error;
 volatile uint16_t g_line;
-volatile uint16_t show_settings_time;  //in ms
 
-uint8_t font_size;
+volatile uint16_t show_settings_time;  //in ms
+uint8_t updated_settings;
+uint8_t font_size=5;
+char font_name[10];
+
+uint16_t grbl_num_ok=0;
+uint16_t grbl_num_err=0;
+char grbl_error_msg[17];
+uint8_t show_status_win;
 
 //  Integer (Basis 10) rechtsbündig auf LCD ausgeben.
 void lcd_put_int(int16_t val, uint8_t len)
@@ -95,12 +109,10 @@ void update_lcd(void)
   {
     lcd_clrscr();
     lcd_gotoxy(0,0);
-    lcd_puts_P("size=");
-    char buf[5];
+    lcd_puts(font_name);
+    char buf[3];
     itoa(font_size,buf,10);
     lcd_puts(buf);
-    lcd_puts_P("font=rowmans");
-    //Todo: rowmans, scripts usw.
   }
   else //normaler Editor
   {
@@ -117,6 +129,20 @@ void update_lcd(void)
   }
 }
 
+void update_status_lcd(void)
+{
+  lcd_gotoxy(0,0);
+  lcd_puts_P("OK:");
+  lcd_put_int(grbl_num_ok,4);
+  lcd_puts_P(" ERR:");
+  lcd_put_int(grbl_num_err,4);
+
+  lcd_gotoxy(0,1);
+  uint8_t l=16-strlen(grbl_error_msg);
+  lcd_puts(grbl_error_msg);
+  while(l--) lcd_putc(' ');
+}
+
 //ISR(TIMER0_COMP_vect, ISR_NOBLOCK) //1kHz
 ISR(TIMER0_COMP_vect) //1kHz
 {
@@ -125,47 +151,70 @@ ISR(TIMER0_COMP_vect) //1kHz
   if (cnt++ == 200)
   {
     cnt = 0;
-    do_update_lcd=1;
+    //do_update_lcd=1;
   }
 
-  static uint8_t last_font_size=0;
-  //Hat sich Font Size geändert? Wenn ja für 2s anzeigen
-  if(font_size!=last_font_size)
+  if(updated_settings)
+  {
       show_settings_time=2000;
-  else if(show_settings_time>0) show_settings_time--;
+      do_update_lcd=1;
+      updated_settings=0;
+  }
+  else
+  {
+    if(show_settings_time>0)
+    {
+      show_settings_time--;
+      if(!show_settings_time)
+        do_update_lcd=1;
+    }
+  }
 }
 
-void processUART(void)
+void get_grbl_response(void)
 {
-  //Hier auf GRBL "ok\r\n" oder Fehlermeldung warten
+  //Hier auf GRBL "ok\n" oder Fehlermeldung warten
   //Ich würde bei jedem "ok" eine Variable hoch laufen lassen und auf dem LCD
   //anzeigen und bei Fehlermeldung abbrechen?
 
-  //~ //Alle Daten empfangen
-  //~ while(uart_GetRXCount()>=sizeof(struct s_setvalues))
-  //~ {
-    //~ //Empfangen
-    //~ char* rec=(char*)&setvalues;
-    //~ uint8_t i;
-    //~ uint16_t rx_tmp;
-    //~ for(i=0;i<sizeof(struct s_setvalues);i++)
-    //~ {
-      //~ rx_tmp=uart_getc();
-      //~ rec[i]=rx_tmp & 0xFF;
-      //~ if(rx_tmp & 0xFF00)
-      //~ {
-        //~ status.uart_error_cnt++;
-        //~ uart_error=((rx_tmp & 0xFF00) >> 8);
-      //~ }
-    //~ }
-    //~ //status.bits |= setvalues.bits;
-    //~ //Senden
-    //~ char* send=(char*)&status;
-    //~ for(i=0;i<sizeof(struct s_status);i++)
-    //~ {
-      //~ uart_putc(send[i]);
-    //~ }
-  //~ }
+  while(uart_GetRXCount()<3);
+  uint16_t rx_tmp;
+  char temp[4];
+  uint8_t i;
+  for(i=0;i<3;++i)
+  {
+    rx_tmp=uart_getc();
+    temp[i]=rx_tmp & 0xFF;
+    if(rx_tmp & 0xFF00)
+      uart_error=((rx_tmp & 0xFF00) >> 8);
+  }
+  temp[3]=0;
+  if(!strcmp(temp,"ok\r"))
+    grbl_num_ok++;
+  else //wird wohl ein Fehler sein
+  {
+    grbl_num_err++;
+    strcpy(grbl_error_msg,temp);
+    i=3;
+    //auf das Ende warten
+    do
+    {
+      rx_tmp=uart_getc();
+      if(rx_tmp!=UART_NO_DATA)
+      {
+        grbl_error_msg[i++]=rx_tmp & 0xFF;
+        if(rx_tmp & 0xFF00)
+          uart_error=((rx_tmp & 0xFF00) >> 8);
+      }
+    }while(i<16 && rx_tmp!='\n' && rx_tmp!='\r');
+    if(i==16)
+      grbl_error_msg[i]=0;
+    else
+      grbl_error_msg[i-1]=0;
+    //empty read
+    while(uart_getc()!=UART_NO_DATA);
+  }
+  update_status_lcd();
 }
 
 static int uart_putchar(char c, FILE *stream);
@@ -205,6 +254,7 @@ int main(void)
 
   lcd_clrscr();
   clr_text_buffer();
+  strncpy(font_name,"rowmans",10);
 
   /*** TIMER0 ***/
   OCR0=250;
@@ -225,49 +275,89 @@ int main(void)
   //enable global interrupts
   sei();
   uint8_t running=0;
+  uint8_t debounce_key=0, last_key=0;
+  uint8_t key, event;
   for (;;)    /* main event loop */
     {
-      process_menu(key_get());
+      key=key_get();
+      if(key==last_key)
+        debounce_key++;
+      else
+        debounce_key=0;
+      if(debounce_key>50)
+      {
+        event=process_menu(key);
+        debounce_key=0;
+      }
+      last_key=key;
+
+      if(do_update_lcd || event)
+      {
+        update_lcd();
+        do_update_lcd=0;
+      }
 
       if (bit_is_clear(PIND,3) && !running)
       {
+        grbl_num_err=0;
+        grbl_num_ok=0;
+
         running=1;
         uart_puts_P("$X\n");
+        get_grbl_response();
         uart_puts_P("$H\n");
+        get_grbl_response();
         uart_puts_P("G21\n");
+        get_grbl_response();
         uart_puts_P("G90\n");
+        get_grbl_response();
         uart_puts_P("G64\n");
+        get_grbl_response();
         uart_puts_P("G40\n");
+        get_grbl_response();
         uart_puts_P("G49\n");
+        get_grbl_response();
         uart_puts_P("G94\n");
+        get_grbl_response();
         uart_puts_P("G17\n");
+        get_grbl_response();
         uart_puts_P("M3 S1000\n");
+        get_grbl_response();
         uart_puts_P("F800.00\n");
+        get_grbl_response();
         uart_puts_P("G0 Z1.00\n");
+        get_grbl_response();
         uart_puts_P("G0 X15 Y15\n");
+        get_grbl_response();
         uart_puts_P("G1 Z-1\n");
+        get_grbl_response();
         uart_puts_P("G2 X25 Y25 I10\n");
+        get_grbl_response();
         uart_puts_P("G0 Z1\n");
+        get_grbl_response();
         uart_puts_P("G0 X35 Y15\n");
+        get_grbl_response();
         uart_puts_P("G1 Z-1\n");
+        get_grbl_response();
         uart_puts_P("G2 X25 Y5 I-10\n");
+        get_grbl_response();
         uart_puts_P("G0 Z1\n");
+        get_grbl_response();
         uart_puts_P("G0 X15 Y15\n");
+        get_grbl_response();
         uart_puts_P("M5\n");
+        get_grbl_response();
         uart_puts_P("M30\n");
+        //empty read
+        while(uart_getc()!=UART_NO_DATA);
+        do_update_lcd=1;
 
-        for(uint8_t i=0;i<160;++i)
-          _delay_ms(15);
       }
       if (bit_is_set(PIND,3))
         running=0;
 
 
-      if(do_update_lcd)
-      {
-        update_lcd();
-        do_update_lcd=0;
-      }
+
 /*
       if (bit_is_clear(PIND,3))
       {
