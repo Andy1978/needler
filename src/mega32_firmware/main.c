@@ -45,7 +45,6 @@
  * ***********************************************/
 
 
-
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -56,9 +55,8 @@
 #include "lcd.h"
 #include "uart.h"
 #include "keymatrix.h"
-#include "../keymapping.h"
 #include "../menu.h"
-//#include "../../hf2gcode/src/libhf2gcode.h"
+//#include "../../../hf2gcode/src/libhf2gcode.h"
 
 //#define UART_BAUD_RATE 38400
 #define UART_BAUD_RATE 9600
@@ -66,25 +64,9 @@
 volatile uint8_t do_update_lcd;
 volatile uint8_t uart_error;
 volatile uint16_t g_line;
+volatile uint16_t show_settings_time;  //in ms
 
-char text_buffer[BUFFER_HEIGHT][BUFFER_WIDTH+1];
-uint8_t cursor_x;  //0..BUFFER_WIDTH-1
-uint8_t cursor_y;  //0..BUFFER_HEIGHT-1
-uint8_t viewport_x;
-uint8_t viewport_y;
-
-//LCD großer Ausschnitt von text_buffer zeigen
-//Cursor cx, cy wird dargestellt
-
-//~ void draw_lcd(char *line, uint8_t cx, uint8_t cy)
-//~ {
-  //~ //lcd_command(LCD_DISP_OFF);
-  //~ lcd_puts("huhu welt");
-  //~ lcd_gotoxy(0,0);
-  //~ //lcd_gotoxy(cx,cy);
-  //~ //lcd_command(LCD_DISP_ON_CURSOR_BLINK);
-//~ }
-
+uint8_t font_size;
 
 //  Integer (Basis 10) rechtsbündig auf LCD ausgeben.
 void lcd_put_int(int16_t val, uint8_t len)
@@ -107,59 +89,58 @@ void lcd_put_int32(int32_t val, uint8_t len)
   lcd_puts(buffer);
 }
 
-/*
 void update_lcd(void)
 {
-  char buf[20];
-  lcd_gotoxy(0,0);
-  _delay_ms(2);   //sonst zickt gotoxy rum, TODO: nachprüfen, ggf. Zeit verkleinern
-  //lcd_puts_P("hello world!");
-  //dtostrf(M_PI,5,2,buf);
-  itoa(g_line,buf,10);
-  lcd_puts(buf);
-  //snprintf(buf, 20, "F%.*f", _precision, _feed);
-  int cnt;
-  snprintf(buf, 20, "F%.2f%n", 123.45, &cnt);
-  lcd_puts(buf);
-
-  lcd_gotoxy(0,1);
-  _delay_ms(2);   //sonst zickt gotoxy rum, TODO: nachprüfen, ggf. Zeit verkleinern
-  itoa(cnt, buf, 10);
-  lcd_puts(buf);
+  if(show_settings_time) //Einstellungen anzeigen
+  {
+    lcd_clrscr();
+    lcd_gotoxy(0,0);
+    lcd_puts_P("size=");
+    char buf[5];
+    itoa(font_size,buf,10);
+    lcd_puts(buf);
+    lcd_puts_P("font=rowmans");
+    //Todo: rowmans, scripts usw.
+  }
+  else //normaler Editor
+  {
+    lcd_gotoxy(0,0);
+    uint8_t x;
+    uint8_t cx, cy, vx, vy;
+    get_viewport(&vx, &vy);
+    get_cursor(&cx, &cy);
+    for(x=0;x<LCD_WIDTH;x++)
+      lcd_putc(get_text_buffer(vy)[vx+x]);
+    for(x=0;x<LCD_WIDTH;x++)
+      lcd_putc(get_text_buffer(vy+1)[vx+x]);
+    lcd_gotoxy(cx-vx,cy-vy);
+  }
 }
-*/
 
 //ISR(TIMER0_COMP_vect, ISR_NOBLOCK) //1kHz
 ISR(TIMER0_COMP_vect) //1kHz
 {
   static int16_t cnt=0;
 
-  uint8_t temp=key_get();
-  process_menu(temp);
-  //~ if(temp!=255)
-  //~ {
-    //~ lcd_gotoxy(0,0);
-    //~ lcd_puts("hello");
-  //~ }
   if (cnt++ == 200)
   {
     cnt = 0;
-    //lcd_command(LCD_DISP_ON);
-    lcd_gotoxy(0,0);
-
-    uint8_t x;
-    for(x=0;x<LCD_WIDTH;x++)
-      lcd_putc(text_buffer[viewport_y][viewport_x+x]);
-    for(x=0;x<LCD_WIDTH;x++)
-      lcd_putc(text_buffer[viewport_y+1][viewport_x+x]);
-
-    lcd_gotoxy(cursor_x-viewport_x,cursor_y-viewport_y);
-    lcd_command(LCD_DISP_ON_CURSOR);
+    do_update_lcd=1;
   }
+
+  static uint8_t last_font_size=0;
+  //Hat sich Font Size geändert? Wenn ja für 2s anzeigen
+  if(font_size!=last_font_size)
+      show_settings_time=2000;
+  else if(show_settings_time>0) show_settings_time--;
 }
 
 void processUART(void)
 {
+  //Hier auf GRBL "ok\r\n" oder Fehlermeldung warten
+  //Ich würde bei jedem "ok" eine Variable hoch laufen lassen und auf dem LCD
+  //anzeigen und bei Fehlermeldung abbrechen?
+
   //~ //Alle Daten empfangen
   //~ while(uart_GetRXCount()>=sizeof(struct s_setvalues))
   //~ {
@@ -202,10 +183,10 @@ int main(void)
   stdout = &mystdout;
   //uart_init(UART_BAUD_SELECT_DOUBLE_SPEED(UART_BAUD_RATE,F_CPU));
   uart_init(UART_BAUD_SELECT(UART_BAUD_RATE,F_CPU));
-  lcd_init(LCD_DISP_ON_CURSOR_BLINK);
+  lcd_init(LCD_DISP_ON_CURSOR);
   lcd_clrscr();
   lcd_gotoxy(0,0);
-  lcd_puts_P("Needler v0.3\n");
+  lcd_puts_P("Needler v0.4\n");
   lcd_gotoxy(0,1);
   lcd_puts_P(__DATE__" aw");
 
@@ -246,9 +227,7 @@ int main(void)
   uint8_t running=0;
   for (;;)    /* main event loop */
     {
-      //printf("abcdef\n");
-      processUART();
-
+      process_menu(key_get());
 
       if (bit_is_clear(PIND,3) && !running)
       {
@@ -284,11 +263,11 @@ int main(void)
         running=0;
 
 
-      //if(do_update_lcd)
-      //{
-        //update_lcd();
-      //  do_update_lcd=0;
-      //}
+      if(do_update_lcd)
+      {
+        update_lcd();
+        do_update_lcd=0;
+      }
 /*
       if (bit_is_clear(PIND,3))
       {
@@ -306,24 +285,7 @@ int main(void)
             _delay_ms(10);
 
           //lcd_puts(lcdbuf);
-          PORTA ^= (uint8_t)_BV(5);
         }
-        PORTA &= (uint8_t)~_BV(4);
-*/
-
-        /*
-        const char *glyph=get_glyph_ptr("rowmans", 'H');
-        char* current_glyph=0;
-
-        current_glyph = malloc(strlen_PF(glyph)+1);
-        strcpy_PF (current_glyph, glyph);
-        uart_puts(current_glyph);
-        uart_putc('\n');
-        free(current_glyph);
-        */
-/*      }
-      else
-       PORTA |= _BV(4);
 */
     }
     return 0;

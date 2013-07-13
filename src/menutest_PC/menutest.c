@@ -2,7 +2,6 @@
 #include <stdio.h>
 
 #include "../menu.h"
-#include "../keymapping.h"
 
 /*
  * 6.7.2013 Andreas Weber
@@ -18,6 +17,8 @@
  * ESC verlässt den Editor oder im Menü eine Ebene höher springen
  * ENTER im Editormodus ans Ende der nächsten Zeile
  * Mit SHIFT+ENTF kann zwischen Einfügemodus und Überschreibmodus umgeschaltet werden
+ * F1 Schrift kleiner
+ * F2 Schrift größer
  *
  * TODO bzw. zu überlegen
  * Soll "ENTER" eine neue Zeile einfügen und die alte, unterste rauswerfen?
@@ -25,14 +26,11 @@
  */
 
 caca_canvas_t *cv;
+uint8_t font_size;
+
 extern const char characters[64];
 
-char text_buffer[BUFFER_HEIGHT][BUFFER_WIDTH+1];
-uint8_t cursor_x;  //0..BUFFER_WIDTH-1
-uint8_t cursor_y;  //0..BUFFER_HEIGHT-1
-uint8_t viewport_x;
-uint8_t viewport_y;
-
+/*********** von menu.c aufgerufen *******************/
 void draw_text_buffer()
 {
   #define BUFFER_LEFT 22
@@ -42,7 +40,10 @@ void draw_text_buffer()
 
   int i;
   for (i=0; i<BUFFER_HEIGHT; i++)
-    caca_put_str(cv, BUFFER_LEFT+1, BUFFER_TOP+1+i, text_buffer[i]);
+  {
+    const char* l=get_text_buffer(i);
+    caca_put_str(cv, BUFFER_LEFT+1, BUFFER_TOP+1+i, l);
+  }
 }
 
 //Zeichen von libcaca auf 8x8 Matrix Keycode

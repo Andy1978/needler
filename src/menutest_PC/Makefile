@@ -2,13 +2,10 @@
 
 CFLAGS = -Wall -Wextra -ggdb
 
-menutest: menutest.c menu.o keymapping.o
+menutest: menutest.c menu.o
 	gcc $(CFLAGS) $^ -lcaca -o $@
 
 menu.o: ../menu.c
-	gcc $(CFLAGS) -c $^
-
-keymapping.o: ../keymapping.c
 	gcc $(CFLAGS) -c $^
 
 clean:

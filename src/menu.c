@@ -1,14 +1,49 @@
 #include "menu.h"
-#include "keymapping.h"
 
 #ifndef AVR
   extern caca_canvas_t *cv;
 #endif
-extern const char characters[64];
-extern uint8_t cursor_x;  //0..BUFFER_WIDTH-1
-extern uint8_t cursor_y;  //0..BUFFER_HEIGHT-1
-extern uint8_t viewport_x;
-extern uint8_t viewport_y;
+
+char text_buffer[BUFFER_HEIGHT][BUFFER_WIDTH+1];
+uint8_t cursor_x;  //0..BUFFER_WIDTH-1
+uint8_t cursor_y;  //0..BUFFER_HEIGHT-1
+uint8_t viewport_x;
+uint8_t viewport_y;
+
+extern uint8_t font_size;
+
+/* Scancode 23 und 30 ist nicht belegt (nur 62 Tasten) */
+// TODO: bei AVR in Flash schieben?
+const char characters[64] = {  0,   0,   0,    0,   0, ' ',   0,    0,
+                             'm', 'b', 'c',  'y', '.','\r',   0,    0,
+                             'n', 'v', 'x',    0, ',', '@',   0,    0,
+                             'j', 'g', 'd',  'a', 'l', '#',   0,  '0',
+                             'h', 'f', 's',    0, 'k', '<',   0, '\b',
+                             'u', 't', 'e',  'q', 'o', '+',   0,  '?',
+                             'z', 'r', 'w', '\t', 'i', 'p', '8',  '9',
+                             '3', '2', '1',    0, '4', '5', '6',  '7'};
+
+
+/****** GETTER ************/
+void get_cursor(uint8_t *cx, uint8_t *cy)
+{
+  *cx=cursor_x;
+  *cy=cursor_y;
+}
+
+void get_viewport(uint8_t *vx, uint8_t *vy)
+{
+  *vx=viewport_x;
+  *vy=viewport_y;
+}
+
+const char* get_text_buffer(uint8_t line)
+{
+  if(line<(BUFFER_HEIGHT))
+    return text_buffer[line];
+  else
+    return 0;
+}
 
 //Text Buffer löschen
 void clr_text_buffer()
@@ -175,6 +210,9 @@ int process_menu(uint8_t scancode)
           case _ENDE :  cursor_x=(modifier_state.SHIFT)?0:get_line_end(cursor_y);
                         modifier_state.SHIFT=0;
                         break;
+          case _F1: if(font_size>2) font_size--; break;
+          case _F2: if(font_size<20) font_size++; break;
+
           default:
             break;
         }
