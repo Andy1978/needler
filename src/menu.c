@@ -230,10 +230,7 @@ int process_menu(uint8_t scancode)
           case _ENDE :  cursor_x=(modifier_state.SHIFT)?0:get_line_end(cursor_y);
                         modifier_state.SHIFT=0;
                         break;
-          case _F1: if(font_size>2) font_size--; updated_settings=1; break;
-          case _F2: if(font_size<9) font_size++; updated_settings=1; break;
-          case _F4: strncpy(font_name,strcmp(font_name,"rowmans")? "rowmans": "scripts", 10); updated_settings=1; break;
-
+          case _ESC  :  clr_text_buffer(); cursor_x=0; cursor_y=0; break;
           default:
             break;
         }
@@ -241,7 +238,17 @@ int process_menu(uint8_t scancode)
         //Nur wenn nicht SHIFT, sonst könnten es
         //Cursortasten -_{} oder F3, F4 [] sein
         if(!modifier_state.SHIFT)
+        {
+          switch(scancode)
+          {
+            case _F1: if(font_size>3) font_size--; updated_settings=1; break;
+            case _F2: if(font_size<9) font_size++; updated_settings=1; break;
+            case _F4: strncpy(font_name,strcmp(font_name,"rowmans")? "rowmans": "scripts", 10); updated_settings=1; break;
+            default:
+              break;
+          }
           cursor_viewport_calc(scancode, &cursor_x,&cursor_y,&viewport_x,&viewport_y, modifier_state.ALT);
+        }
         else
           switch(scancode)
           {

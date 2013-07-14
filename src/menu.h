@@ -45,7 +45,7 @@ union _modifier_state
 
 //Puffer ohne \0
 #define BUFFER_WIDTH 25
-#define BUFFER_HEIGHT 8
+#define BUFFER_HEIGHT 6
 
 #define LCD_WIDTH 16
 #define LCD_HEIGHT 2

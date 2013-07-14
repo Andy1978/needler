@@ -116,7 +116,7 @@ void update_lcd(void)
   }
   else //normaler Editor
   {
-    lcd_command(LCD_DISP_OFF);
+    lcd_command(LCD_DISP_ON);
     lcd_gotoxy(0,0);
     uint8_t x;
     uint8_t cx, cy, vx, vy;
@@ -134,14 +134,16 @@ void update_lcd(void)
 void update_status_lcd(void)
 {
   lcd_gotoxy(0,0);
+  //_delay_ms(1);
+  _delay_us(30);
   lcd_puts_P("OK:");
   lcd_put_int(grbl_num_ok,4);
   lcd_puts_P(" ERR:");
   lcd_put_int(grbl_num_err,4);
-
   lcd_gotoxy(0,1);
-  uint8_t l=16-strlen(grbl_error_msg);
+  _delay_us(30);
   lcd_puts(grbl_error_msg);
+  uint8_t l=16-strlen(grbl_error_msg);
   while(l--) lcd_putc(' ');
 }
 
@@ -178,56 +180,53 @@ ISR(TIMER0_COMP_vect) //1kHz
   }
   if(TCNT1L>5 && bit_is_set(PIND,2))
     PORTD |= _BV(PD6);
-  if(TCNT1L>5 && bit_is_clear(PIND,2))
+  if(TCNT1L>1 && bit_is_clear(PIND,2))
     PORTD &= (uint8_t) ~_BV(PD6);
 }
 
 void get_grbl_response(void)
 {
-  //Hier auf GRBL "ok\n" oder Fehlermeldung warten
-  //Ich würde bei jedem "ok" eine Variable hoch laufen lassen und auf dem LCD
-  //anzeigen und bei Fehlermeldung abbrechen?
-
-  while(uart_GetRXCount()<4);
   uint16_t rx_tmp;
-  char temp[5];
-  uint8_t i;
-  for(i=0;i<4;++i)
+  char c=0;
+  char temp[17];
+  uint8_t i=0;
+
+  //auf GRBL "ok\r\n" oder Fehlermeldung warten
+  //Lesen bis 16 Zeichen oder \n empfangen
+
+  //while(uart_GetRXCount()<4);
+  //for(i=0;i<4;++i)
+  do
   {
-    rx_tmp=uart_getc();
-    temp[i]=rx_tmp & 0xFF;
-    if(rx_tmp & 0xFF00)
+    rx_tmp = uart_getc ();
+    if (rx_tmp & 0xFF00)
       uart_error=((rx_tmp & 0xFF00) >> 8);
+    if(rx_tmp != UART_NO_DATA) //Zeichen empfangen
+    {
+      c = rx_tmp & 0xFF;
+      temp[i++] = c;
+    }
   }
-  temp[4]=0;
-  if(!strcmp(temp,"ok\r\n"))
+  while(i<16 && c!='\n');
+  if(c=='\n' && i>1) //kurze Antwort mit \r\n
+    temp[i-2]=0;
+  else
+    temp[i]=0;
+  if(i==16) //lange Fehlermeldung? Warten und dann empty read
+  {
+    _delay_ms(30);
+    while(uart_getc()!=UART_NO_DATA); //empty read
+  }
+
+  if(!strcmp(temp,"ok"))
     grbl_num_ok++;
   else //wird wohl ein Fehler sein
   {
     grbl_num_err++;
-    strcpy(grbl_error_msg,temp);
-    i=4;
-    //auf das Ende warten
-    do
-    {
-      rx_tmp=uart_getc();
-      if(rx_tmp!=UART_NO_DATA)
-      {
-        grbl_error_msg[i++]=rx_tmp & 0xFF;
-        if(rx_tmp & 0xFF00)
-          uart_error=((rx_tmp & 0xFF00) >> 8);
-      }
-    }while(i<16 && rx_tmp!='\n' && rx_tmp!='\r');
-    if(i==16)
-      grbl_error_msg[i]=0;
-    else
-      grbl_error_msg[i-1]=0;
-    //empty read
-    while(uart_getc()!=UART_NO_DATA);
+    strncpy(grbl_error_msg, temp, 17);
+    grbl_error_msg[16]=0;
   }
   update_status_lcd();
-  //for (i=0;i<200;++i)
-  //  _delay_ms(15);
 }
 
 static int uart_putchar(char c, FILE *stream);
@@ -240,6 +239,43 @@ static int uart_putchar(char c, FILE *stream)
   return 0;
 }
 
+/*
+ *      //~ uart_puts_P("G21\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G90\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G94\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G17\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("M3 S1000\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("F800.00\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G0 Z1.00\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G0 X15 Y15\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G1 Z-1\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G2 X25 Y25 I10\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G0 Z1\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G0 X35 Y15\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G1 Z-1\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G2 X25 Y5 I-10\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G0 Z1\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("G0 X15 Y15\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("M5\n");
+        //~ get_grbl_response();
+        //~ uart_puts_P("M30\n");
+*/
 int main(void)
 {
   stdout = &mystdout;
@@ -327,104 +363,71 @@ int main(void)
         //empty read
         while(uart_getc()!=UART_NO_DATA);
         running=1;
+        update_status_lcd();
         uart_puts_P("$X\n");
         get_grbl_response();
+        strncpy(grbl_error_msg, "$H:Referenzfahrt",17);
+        update_status_lcd();
         uart_puts_P("$H\n");
         get_grbl_response();
-        //~ uart_puts_P("G21\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("G90\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("G94\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("G17\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("M3 S1000\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("F800.00\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("G0 Z1.00\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("G0 X15 Y15\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("G1 Z-1\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("G2 X25 Y25 I10\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("G0 Z1\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("G0 X35 Y15\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("G1 Z-1\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("G2 X25 Y5 I-10\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("G0 Z1\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("G0 X15 Y15\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("M5\n");
-        //~ get_grbl_response();
-        //~ uart_puts_P("M30\n");
+        strncpy(grbl_error_msg, "Gravur laeuft...",17);
+        update_status_lcd();
 
-//~ int init_get_gcode_line (
-             //~ char *font,   /* used font, e.g. "rowmans" or "scriptc" */
-             //~ char *text,   /* text, e.g. "Hello world!\nsecond line" */
-             //~ double X0,          /* the X-Axis offset in mm */
-             //~ double Y0,          /* the Y-Axis offset in mm */
-             //~ double Z_up,        /* the Z-Axis value in mm when it's up */
-             //~ double Z_down,      /* the Z-Axis value in mm when it's down */
-             //~ double yinc,        /* increment between to lines for multiline */
-             //~ double scale,       /* Scale factor (mm/hershey units) */
-             //~ double feed,        /* Linear feed rate in mm/min */
-             //~ int precision,      /* Precision for floating points in generated g-code */
-             //~ char verbose,       /* Verbose description in generated G-Code */
-             //~ char align,         /* Align lines l(eft) r(ight) c(enter) */
-             //~ char use_inch);     /* Use inch instead of mm as base unit */
-                     
-        int r = init_get_gcode_line("rowmans", "Hello world!", 1, 1, 1, -1, 7, 0.3, 1100, 3, 0, 'l', 0);
-        char buf[200];
-        while((g_line = get_gcode_line (buf, 200))!=-1)
+       //int init_get_gcode_line ( char *font, char *text, double X0, double Y0, double Z_up, double Z_down, double yinc, double scale,
+       //double feed, int precision, char verbose, char align, char use_inch);
+
+        //int r = init_get_gcode_line("rowmans", "Hello world!", 1, 1, 1, -1, 7, 0.3, 1100, 3, 0, 'l', 0);
+        int r;
+        uint8_t line_nr;
+        double scale=font_size*0.047619;
+        double x0, y0;
+        char line[BUFFER_WIDTH];
+        for(line_nr=0; line_nr<BUFFER_HEIGHT; line_nr++)
         {
-          uart_puts(buf);
-          uart_putc('\n');
-          get_grbl_response();
+          strncpy(line, get_text_buffer(line_nr), BUFFER_WIDTH);
+          //Leerzeichen am Ende mit 0 füllen
+          int8_t len = BUFFER_WIDTH-1;
+          while(len>=0 && line[len]==' ') line[len--]=0;
+
+          //Positionsberechnung
+          //Die Alukärtchen haben 85x54mm
+          x0 = 10; //10mm vorerst fix, wie einstellbar?
+          y0 = 50 - (line_nr+1) * (font_size*1.2);  //20% der Zeichenhöhe Zeilenabstand
+
+          //~ uart_puts_P("-");
+          //~ uart_puts(line);
+          //~ uart_puts_P("-");
+          //~ char xtemp[5];
+          //~ itoa(len,xtemp,10);
+          //~ uart_puts(xtemp);
+          //~ uart_puts_P("----");
+
+          if(len>=0)
+          {
+            r = init_get_gcode_line(font_name, line, x0, y0, 1, -1, 0, scale, 1300, 2, 0, 'l', 0);
+            char buf[200];
+            while((g_line = get_gcode_line (buf, 200))!=-1)
+            {
+              uart_puts(buf);
+              uart_putc('\n');
+              get_grbl_response();
+            }
+          }
         }
+        strncpy(grbl_error_msg, "*** BEENDET  ***",17);
+        update_status_lcd();
         PORTD &= (uint8_t) ~_BV(PD6);
         uart_puts_P("G0X1Y1\n");
-        get_grbl_response();
-        uart_puts_P("$H\n");
-        get_grbl_response();
-        
+        uart_puts_P("M30\n");
         //empty read
         while(uart_getc()!=UART_NO_DATA);
+        //BEENDET etwas stehen lassen
+        for(uint8_t i=0;i<200;++i)
+          _delay_ms(10);
+        grbl_error_msg[0]=0;
         do_update_lcd=1;
-
-      }
-      if (bit_is_set(PIND,3))
         running=0;
-
-
-
-/*
-      if (bit_is_clear(PIND,3))
-      {
-
-        int r = init_get_gcode_line("rowmans", "Hello world!", 0, 0, 1, -1, 15, 0.23, 500, 3, 1, 'l', 0);
-        char buf[200];
-        char lcdbuf[20];
-        while((g_line = get_gcode_line (buf, 200))!=-1)
-        {
-          uart_puts(buf);
-          uart_putc('\n');
-          //itoa(g_line,lcdbuf,10);
-          //lcd_gotoxy(0,0);
-          for(uint8_t j=0;j<10;j++)
-            _delay_ms(10);
-
-          //lcd_puts(lcdbuf);
-        }
-*/
+      }
     }
     return 0;
 }
