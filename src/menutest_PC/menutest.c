@@ -11,6 +11,8 @@
 
 caca_canvas_t *cv;
 uint8_t font_size;
+uint8_t updated_settings;
+char font_name[10];
 
 extern const char characters[64];
 

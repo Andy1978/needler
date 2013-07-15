@@ -2,6 +2,8 @@
 
 CFLAGS = -Wall -Wextra -ggdb
 
+all: menutest
+
 menutest: menutest.c menu.o
 	gcc $(CFLAGS) $^ -lcaca -o $@
 
