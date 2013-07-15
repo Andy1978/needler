@@ -71,6 +71,7 @@
 volatile uint8_t do_update_lcd;
 volatile uint8_t uart_error;
 volatile uint16_t g_line;
+volatile uint8_t running;
 
 volatile uint16_t show_settings_time;  //in ms
 uint8_t updated_settings;
@@ -156,10 +157,11 @@ ISR(INT0_vect)
 ISR(TIMER0_COMP_vect) //1kHz
 {
   static int16_t cnt=0;
-
   if (cnt++ == 200)
   {
     cnt = 0;
+    if(running && key_get()==51) // TAB
+      uart_putc('~');
     //do_update_lcd=1;
   }
 
@@ -284,7 +286,7 @@ int main(void)
   lcd_init(LCD_DISP_ON_CURSOR);
   lcd_clrscr();
   lcd_gotoxy(0,0);
-  lcd_puts_P("Needler v0.5\n");
+  lcd_puts_P("Needler v0.6\n");
   lcd_gotoxy(0,1);
   lcd_puts_P(__DATE__" aw");
 
@@ -333,9 +335,8 @@ int main(void)
 
   //enable global interrupts
   sei();
-  uint8_t running=0;
   uint8_t debounce_key=0, last_key=0;
-  uint8_t key, event;
+  uint8_t key, event=0;
   for (;;)    /* main event loop */
     {
       key=key_get();
@@ -377,7 +378,6 @@ int main(void)
        //double feed, int precision, char verbose, char align, char use_inch);
 
         //int r = init_get_gcode_line("rowmans", "Hello world!", 1, 1, 1, -1, 7, 0.3, 1100, 3, 0, 'l', 0);
-        int r;
         uint8_t line_nr;
         double scale=font_size*0.047619;
         double x0, y0;
@@ -391,8 +391,8 @@ int main(void)
 
           //Positionsberechnung
           //Die Alukärtchen haben 85x54mm
-          x0 = 10; //10mm vorerst fix, wie einstellbar?
-          y0 = 50 - (line_nr+1) * (font_size*1.2);  //20% der Zeichenhöhe Zeilenabstand
+          x0 = 7; //10mm vorerst fix, wie einstellbar?
+          y0 = 50 - (line_nr+1) * (font_size*1.7);  //70% der Zeichenhöhe als Zeilenabstand
 
           //~ uart_puts_P("-");
           //~ uart_puts(line);
@@ -404,7 +404,7 @@ int main(void)
 
           if(len>=0)
           {
-            r = init_get_gcode_line(font_name, line, x0, y0, 1, -1, 0, scale, 1300, 2, 0, 'l', 0);
+            init_get_gcode_line(font_name, line, x0, y0, 1, -1, 0, scale, 1300, 2, 0, 'l', 0);
             char buf[200];
             while((g_line = get_gcode_line (buf, 200))!=-1)
             {

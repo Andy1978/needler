@@ -11,6 +11,7 @@
  * POS1 springt an den Anfang der Zeile
  * ENDE ans Ende
  * ESC verlässt den Editor oder im Menü eine Ebene höher springen
+ * TAB macht ein Resume nach Feed hold (in ISR 1kHz in main.c, außerhalb process_menu)
  * ENTER im Editormodus ans Ende der nächsten Zeile
  * Mit SHIFT+ENTF kann zwischen Einfügemodus und Überschreibmodus umgeschaltet werden
  * F1 Schrift kleiner
@@ -29,6 +30,7 @@ uint8_t viewport_x;
 uint8_t viewport_y;
 
 extern uint8_t font_size;
+extern uint8_t resume_feed_hold;
 extern char font_name[10];
 extern uint8_t updated_settings;
 
@@ -96,7 +98,7 @@ void delete_ch(uint8_t x, const uint8_t y)
 
 void cursor_viewport_calc(uint8_t scancode, uint8_t *cx, uint8_t *cy, uint8_t *vx, uint8_t *vy, char ALT)
 {
-  //TODO: könnte man zusammenfassen bei gleicher funktion
+  //TODO: könnte man zusammenfassen bei gleicher Funktion
   //Wenn ALT und Pfeile, Viewport verschieben
   if(ALT)
   {
@@ -196,7 +198,6 @@ int process_menu(uint8_t scancode)
         else
         {
           //Andere Funktion mit ASCII Zeichen wie \b, \r, \t
-          //TODO: was mit \t machen?
           if(c=='\b')
           {
             if(cursor_x>0)
@@ -211,6 +212,8 @@ int process_menu(uint8_t scancode)
             cursor_x=get_line_end(cursor_y);
             cursor_viewport_calc(0, &cursor_x,&cursor_y,&viewport_x,&viewport_y, 0);
           }
+          //else if(c=='\t')
+          // TODO? ;
         }
       }
       else /*muss ein Modifier, Cursor, Funktionstaste oder ähnlich sein*/
