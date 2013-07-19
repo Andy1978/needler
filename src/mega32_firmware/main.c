@@ -119,6 +119,7 @@ void update_lcd(void)
   {
     lcd_command(LCD_DISP_ON);
     lcd_gotoxy(0,0);
+    //_delay_us(30);
     uint8_t x;
     uint8_t cx, cy, vx, vy;
     get_viewport(&vx, &vy);
@@ -136,13 +137,13 @@ void update_status_lcd(void)
 {
   lcd_gotoxy(0,0);
   //_delay_ms(1);
-  _delay_us(30);
+  //_delay_us(30);
   lcd_puts_P("OK:");
   lcd_put_int(grbl_num_ok,4);
   lcd_puts_P(" ERR:");
   lcd_put_int(grbl_num_err,4);
   lcd_gotoxy(0,1);
-  _delay_us(30);
+  //_delay_us(30);
   lcd_puts(grbl_error_msg);
   uint8_t l=16-strlen(grbl_error_msg);
   while(l--) lcd_putc(' ');
@@ -286,7 +287,7 @@ int main(void)
   lcd_init(LCD_DISP_ON_CURSOR);
   lcd_clrscr();
   lcd_gotoxy(0,0);
-  lcd_puts_P("Needler v0.6\n");
+  lcd_puts_P("Needler v0.7\n");
   lcd_gotoxy(0,1);
   lcd_puts_P(__DATE__" aw");
 
