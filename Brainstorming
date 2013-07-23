@@ -35,3 +35,9 @@ Reichelt Bestellung:
 Alternative Schrittmotortreiber:
 http://www.leadshine.com/Product_Show.aspx?ID=118
 http://www.cnc-spezialist.de/leadshine-schrittmotortreiber-m542-p-294-1.html
+
+Verwendetes Pneumatikventil M204 220V 9VA-6W
+Mit LCR Meter von Bernd gemessen:
+100Hz parallel L=10.4H R=6.3k Q=0.973
+100Hz seriell L=5H R=3.2k Z=4.5k
+1kHz seriell Z=14.9k L=1.5H
